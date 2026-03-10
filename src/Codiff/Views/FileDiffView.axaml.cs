@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Codiff.Controls;
 using Codiff.ViewModels;
 
 namespace Codiff.Views;
@@ -8,6 +10,8 @@ public partial class FileDiffView : UserControl
 {
     private ScrollViewer? _leftScrollViewer;
     private ScrollViewer? _rightScrollViewer;
+    private DiffMapControl? _leftDiffMap;
+    private DiffMapControl? _rightDiffMap;
     private bool _isSyncing;
 
     public FileDiffView()
@@ -21,16 +25,50 @@ public partial class FileDiffView : UserControl
         InitializeScrollSync();
     }
 
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (DataContext is FileDiffViewModel vm)
+            {
+                vm.SaveCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnLeftPathPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is FileDiffViewModel vm)
+            vm.OpenInExplorerCommand.Execute(vm.LeftFilePath);
+    }
+
+    private void OnRightPathPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is FileDiffViewModel vm)
+            vm.OpenInExplorerCommand.Execute(vm.RightFilePath);
+    }
+
     private void InitializeScrollSync()
     {
         _leftScrollViewer = this.FindControl<ScrollViewer>("LeftScrollViewer");
         _rightScrollViewer = this.FindControl<ScrollViewer>("RightScrollViewer");
+        _leftDiffMap = this.FindControl<DiffMapControl>("LeftDiffMap");
+        _rightDiffMap = this.FindControl<DiffMapControl>("RightDiffMap");
 
         if (_leftScrollViewer != null)
             _leftScrollViewer.ScrollChanged += OnLeftScrollChanged;
 
         if (_rightScrollViewer != null)
             _rightScrollViewer.ScrollChanged += OnRightScrollChanged;
+
+        if (_leftDiffMap != null)
+            _leftDiffMap.TargetScrollViewer = _leftScrollViewer;
+
+        if (_rightDiffMap != null)
+            _rightDiffMap.TargetScrollViewer = _rightScrollViewer;
 
         if (DataContext is FileDiffViewModel vm)
             SubscribeToViewModel(vm);

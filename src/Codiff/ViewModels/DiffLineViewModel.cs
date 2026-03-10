@@ -16,9 +16,20 @@ public partial class DiffLineViewModel : ObservableObject
 
     public string LeftLineNumberText => Model.LeftLineNumber.HasValue ? Model.LeftLineNumber.Value.ToString() : string.Empty;
     public string RightLineNumberText => Model.RightLineNumber.HasValue ? Model.RightLineNumber.Value.ToString() : string.Empty;
-    public string LeftText => Model.LeftText;
-    public string RightText => Model.RightText;
+
+    [ObservableProperty]
+    private string _leftText;
+
+    [ObservableProperty]
+    private string _rightText;
+
     public LineType LineType => Model.LineType;
+
+    public event Action? LeftTextEdited;
+    public event Action? RightTextEdited;
+
+    partial void OnLeftTextChanged(string value) => LeftTextEdited?.Invoke();
+    partial void OnRightTextChanged(string value) => RightTextEdited?.Invoke();
 
     public IBrush Background => Model.LineType switch
     {
@@ -37,6 +48,8 @@ public partial class DiffLineViewModel : ObservableObject
     public DiffLineViewModel(DiffLine model)
     {
         Model = model;
+        _leftText = model.LeftText;
+        _rightText = model.RightText;
         LeftSpanViewModels = BuildSpanViewModels(model.LeftSpans, model.LineType, isLeft: true);
         RightSpanViewModels = BuildSpanViewModels(model.RightSpans, model.LineType, isLeft: false);
     }

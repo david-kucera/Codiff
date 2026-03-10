@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Codiff.ViewModels;
 
@@ -9,6 +10,20 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.FileDiffViewModel.SaveCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)

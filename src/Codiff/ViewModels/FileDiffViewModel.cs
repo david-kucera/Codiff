@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,6 +30,16 @@ public partial class FileDiffViewModel : ObservableObject
     [ObservableProperty]
     private double _scrollOffset;
 
+    [ObservableProperty]
+    private string _leftStatusText = string.Empty;
+
+    [ObservableProperty]
+    private string _rightStatusText = string.Empty;
+
+    private bool _isLeftModified;
+    private bool _isRightModified;
+    private bool _suppressTextEdited;
+
     private IReadOnlyList<int> _hunkIndices = Array.Empty<int>();
 
     public string DiffCounterText => TotalDiffs > 0
@@ -54,19 +66,125 @@ public partial class FileDiffViewModel : ObservableObject
 
     private void ApplyResult(FileDiffResult result)
     {
+        _suppressTextEdited = true;
+
         _hunkIndices = result.DiffHunkIndices;
         TotalDiffs = _hunkIndices.Count;
         CurrentDiffIndex = TotalDiffs > 0 ? 0 : -1;
 
         Lines.Clear();
         foreach (var line in result.Lines)
-            Lines.Add(new DiffLineViewModel(line));
+        {
+            var vm = new DiffLineViewModel(line);
+            vm.LeftTextEdited += OnLeftTextEdited;
+            vm.RightTextEdited += OnRightTextEdited;
+            Lines.Add(vm);
+        }
+
+        _isLeftModified = false;
+        _isRightModified = false;
+        LeftStatusText = string.Empty;
+        RightStatusText = string.Empty;
+
+        _suppressTextEdited = false;
 
         OnPropertyChanged(nameof(DiffCounterText));
         OnPropertyChanged(nameof(HasDiffs));
 
         if (CurrentDiffIndex >= 0)
             NavigateToCurrentHunk();
+    }
+
+    private void OnLeftTextEdited()
+    {
+        if (_suppressTextEdited) return;
+        if (!_isLeftModified)
+        {
+            _isLeftModified = true;
+            LeftStatusText = "● Modified";
+        }
+    }
+
+    private void OnRightTextEdited()
+    {
+        if (_suppressTextEdited) return;
+        if (!_isRightModified)
+        {
+            _isRightModified = true;
+            RightStatusText = "● Modified";
+        }
+    }
+
+    [RelayCommand]
+    private void Save()
+    {
+        bool saved = false;
+
+        if (_isLeftModified && !string.IsNullOrEmpty(LeftFilePath))
+        {
+            var text = ReconstructText(isLeft: true);
+            File.WriteAllText(LeftFilePath, text);
+            _isLeftModified = false;
+            LeftStatusText = "✔ Saved";
+            saved = true;
+        }
+
+        if (_isRightModified && !string.IsNullOrEmpty(RightFilePath))
+        {
+            var text = ReconstructText(isLeft: false);
+            File.WriteAllText(RightFilePath, text);
+            _isRightModified = false;
+            RightStatusText = "✔ Saved";
+            saved = true;
+        }
+
+        if (saved)
+        {
+            // Reload the diff to reflect saved changes
+            if (!string.IsNullOrEmpty(LeftFilePath) && !string.IsNullOrEmpty(RightFilePath))
+                LoadFiles(LeftFilePath, RightFilePath);
+        }
+    }
+
+    private string ReconstructText(bool isLeft)
+    {
+        var textLines = new List<string>();
+        foreach (var line in Lines)
+        {
+            if (isLeft)
+            {
+                if (line.Model.LeftLineNumber.HasValue)
+                    textLines.Add(line.LeftText);
+            }
+            else
+            {
+                if (line.Model.RightLineNumber.HasValue)
+                    textLines.Add(line.RightText);
+            }
+        }
+        return string.Join(Environment.NewLine, textLines);
+    }
+
+    [RelayCommand]
+    private void OpenInExplorer(string? filePath)
+    {
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            return;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Process.Start("open", $"-R \"{filePath}\"");
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            var dir = Path.GetDirectoryName(filePath);
+            if (dir != null)
+                Process.Start("xdg-open", dir);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanGoPrev))]
