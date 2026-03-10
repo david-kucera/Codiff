@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Codiff.ViewModels"
+        xmlns:views="using:Codiff.Views"
+        x:Class="Codiff.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Codiff"
+        Width="1280"
+        Height="800"
+        MinWidth="800"
+        MinHeight="500">
+
+    <DockPanel>
+        <!-- Top Toolbar -->
+        <Border DockPanel.Dock="Top"
+                Background="#F0F0F0"
+                BorderBrush="#CCCCCC"
+                BorderThickness="0,0,0,1"
+                Padding="8,6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Open Files"
+                        Command="{Binding OpenFilesCommand}"
+                        Padding="12,6" />
+                <Button Content="Open Folders"
+                        Command="{Binding OpenFoldersCommand}"
+                        Padding="12,6" />
+                <Separator Width="1" Background="#CCCCCC" Margin="4,0" />
+                <Button Content="◀ Prev Diff"
+                        Command="{Binding FileDiffViewModel.PrevDiffCommand}"
+                        Padding="10,6" />
+                <Button Content="Next Diff ▶"
+                        Command="{Binding FileDiffViewModel.NextDiffCommand}"
+                        Padding="10,6" />
+                <Border Background="White"
+                        BorderBrush="#CCCCCC"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        Padding="10,4"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding FileDiffViewModel.DiffCounterText}"
+                               VerticalAlignment="Center"
+                               FontFamily="Consolas,Courier New,monospace"
+                               MinWidth="80"
+                               TextAlignment="Center" />
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Main content area -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="150" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Sidebar: Folder Tree -->
+            <Border Grid.Column="0"
+                    BorderBrush="#CCCCCC"
+                    BorderThickness="0,0,1,0">
+                <views:FolderDiffView DataContext="{Binding FolderDiffViewModel}" />
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                          Background="#CCCCCC"
+                          ResizeDirection="Columns" />
+
+            <!-- Right: File Diff View -->
+            <views:FileDiffView Grid.Column="2"
+                                DataContext="{Binding FileDiffViewModel}" />
+        </Grid>
+    </DockPanel>
+</Window>
