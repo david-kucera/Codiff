@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Codiff.ViewModels"
+             x:Class="Codiff.Views.FolderDiffView"
+             x:DataType="vm:FolderDiffViewModel">
+
+    <DockPanel>
+        <!-- Header -->
+        <Border DockPanel.Dock="Top"
+                Background="#E8E8E8"
+                Padding="8,6"
+                BorderBrush="#CCCCCC"
+                BorderThickness="0,0,0,1">
+            <TextBlock Text="Folder Contents"
+                       FontWeight="SemiBold"
+                       FontSize="12" />
+        </Border>
+
+        <!-- Path labels -->
+        <StackPanel DockPanel.Dock="Top"
+                    Margin="4,4,4,0"
+                    Spacing="2">
+            <TextBlock Text="{Binding LeftFolderPath}"
+                       FontSize="10"
+                       Foreground="#666666"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding LeftFolderPath}" />
+            <TextBlock Text="{Binding RightFolderPath}"
+                       FontSize="10"
+                       Foreground="#666666"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding RightFolderPath}" />
+        </StackPanel>
+
+        <!-- Legend -->
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="8,4"
+                    HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <TextBlock Text="=" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
+                <TextBlock Text="same" FontSize="10" Foreground="#666" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <TextBlock Text="~" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
+                <TextBlock Text="modified" FontSize="10" Foreground="#666" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <TextBlock Text="+" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
+                <TextBlock Text="added" FontSize="10" Foreground="#666" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <TextBlock Text="-" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
+                <TextBlock Text="deleted" FontSize="10" Foreground="#666" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- File list -->
+        <ListBox ItemsSource="{Binding Entries}"
+                 SelectedItem="{Binding SelectedEntry}"
+                 Background="White"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FolderEntryViewModel">
+                    <Border Background="{Binding StatusColor}"
+                            Padding="4,2"
+                            CornerRadius="2">
+                        <Grid ColumnDefinitions="20,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding StatusIcon}"
+                                       FontFamily="Consolas,Courier New,monospace"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding RelativePath}"
+                                       FontFamily="Consolas,Courier New,monospace"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding RelativePath}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>
