@@ -14,7 +14,7 @@
                            FontFamily="Consolas,Courier New,monospace"
                            FontSize="11"
                            Foreground="#444444"
-                           TextTrimming="LeadingEllipsis"
+                           TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding LeftFilePath}" />
             </Border>
             <Border Grid.Column="1" Background="#DDDDDD" />
@@ -23,7 +23,7 @@
                            FontFamily="Consolas,Courier New,monospace"
                            FontSize="11"
                            Foreground="#444444"
-                           TextTrimming="LeadingEllipsis"
+                           TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding RightFilePath}" />
             </Border>
         </Grid>

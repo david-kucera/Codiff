@@ -99,13 +99,14 @@ public partial class FileDiffViewModel : ObservableObject
 
     private bool CanGoNext() => CurrentDiffIndex >= 0 && CurrentDiffIndex < TotalDiffs - 1;
 
+    private const double LineHeightPx = 24.0;
+
     private void NavigateToCurrentHunk()
     {
         if (CurrentDiffIndex >= 0 && CurrentDiffIndex < _hunkIndices.Count)
         {
             int lineIndex = _hunkIndices[CurrentDiffIndex];
-            // Each line row is 24px tall
-            ScrollOffset = lineIndex * 24.0;
+            ScrollOffset = lineIndex * LineHeightPx;
         }
     }
 

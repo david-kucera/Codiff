@@ -23,12 +23,12 @@
             <TextBlock Text="{Binding LeftFolderPath}"
                        FontSize="10"
                        Foreground="#666666"
-                       TextTrimming="LeadingEllipsis"
+                       TextTrimming="CharacterEllipsis"
                        ToolTip.Tip="{Binding LeftFolderPath}" />
             <TextBlock Text="{Binding RightFolderPath}"
                        FontSize="10"
                        Foreground="#666666"
-                       TextTrimming="LeadingEllipsis"
+                       TextTrimming="CharacterEllipsis"
                        ToolTip.Tip="{Binding RightFolderPath}" />
         </StackPanel>
 
@@ -79,7 +79,7 @@
                                        FontFamily="Consolas,Courier New,monospace"
                                        FontSize="11"
                                        VerticalAlignment="Center"
-                                       TextTrimming="LeadingEllipsis"
+                                       TextTrimming="CharacterEllipsis"
                                        ToolTip.Tip="{Binding RelativePath}" />
                         </Grid>
                     </Border>
