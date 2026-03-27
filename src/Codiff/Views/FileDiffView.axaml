@@ -71,7 +71,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding Background}"
+                                      Background="{Binding LeftBackground}"
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"
@@ -123,7 +123,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding Background}"
+                                      Background="{Binding RightBackground}"
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"

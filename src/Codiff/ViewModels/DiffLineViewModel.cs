@@ -12,6 +12,10 @@ public class SpanViewModel
 
 public partial class DiffLineViewModel : ObservableObject
 {
+    private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#FFFACD"));
+    private static readonly IBrush PresentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
+    private static readonly IBrush FillerBrush = new SolidColorBrush(Color.Parse("#EEEEEE"));
+
     public DiffLine Model { get; }
 
     public string LeftLineNumberText => Model.LeftLineNumber.HasValue ? Model.LeftLineNumber.Value.ToString() : string.Empty;
@@ -31,12 +35,21 @@ public partial class DiffLineViewModel : ObservableObject
     partial void OnLeftTextChanged(string value) => LeftTextEdited?.Invoke();
     partial void OnRightTextChanged(string value) => RightTextEdited?.Invoke();
 
-    public IBrush Background => Model.LineType switch
+    public IBrush Background => LeftBackground;
+
+    public IBrush LeftBackground => Model.LineType switch
     {
-        LineType.Modified => new SolidColorBrush(Color.Parse("#FFFACD")),
-        LineType.Added => new SolidColorBrush(Color.Parse("#CCFFCC")),
-        LineType.Deleted => new SolidColorBrush(Color.Parse("#FFCCCC")),
-        LineType.Filler => new SolidColorBrush(Color.Parse("#EEEEEE")),
+        LineType.Modified => ModifiedBrush,
+        LineType.Deleted => PresentBrush,
+        LineType.Filler => FillerBrush,
+        _ => Brushes.White
+    };
+
+    public IBrush RightBackground => Model.LineType switch
+    {
+        LineType.Modified => ModifiedBrush,
+        LineType.Added => PresentBrush,
+        LineType.Filler => FillerBrush,
         _ => Brushes.White
     };
 
