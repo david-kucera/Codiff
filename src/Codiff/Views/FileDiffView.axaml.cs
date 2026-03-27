@@ -97,17 +97,17 @@ public partial class FileDiffView : UserControl
         }
     }
 
-    private void ScrollToOffset(double offset)
+    private void ScrollToOffset(double verticalOffset)
     {
         _isSyncing = true;
         try
         {
             _leftScrollViewer?.SetCurrentValue(
                 ScrollViewer.OffsetProperty,
-                new Vector(_leftScrollViewer.Offset.X, offset));
+                new Vector(_leftScrollViewer.Offset.X, verticalOffset));
             _rightScrollViewer?.SetCurrentValue(
                 ScrollViewer.OffsetProperty,
-                new Vector(_rightScrollViewer?.Offset.X ?? 0, offset));
+                new Vector(_rightScrollViewer?.Offset.X ?? 0, verticalOffset));
         }
         finally
         {
@@ -117,15 +117,18 @@ public partial class FileDiffView : UserControl
 
     private void OnLeftScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (_isSyncing || _rightScrollViewer == null || _leftScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0) return;
+        if (_isSyncing || _rightScrollViewer == null || _leftScrollViewer == null)
+            return;
+        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0)
+            return;
 
         _isSyncing = true;
         try
         {
+            // Keep both horizontal and vertical scroll positions in sync.
             _rightScrollViewer.SetCurrentValue(
                 ScrollViewer.OffsetProperty,
-                new Vector(_rightScrollViewer.Offset.X, _leftScrollViewer.Offset.Y));
+                new Vector(_leftScrollViewer.Offset.X, _leftScrollViewer.Offset.Y));
         }
         finally
         {
@@ -135,15 +138,18 @@ public partial class FileDiffView : UserControl
 
     private void OnRightScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (_isSyncing || _leftScrollViewer == null || _rightScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0) return;
+        if (_isSyncing || _leftScrollViewer == null || _rightScrollViewer == null)
+            return;
+        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0)
+            return;
 
         _isSyncing = true;
         try
         {
+            // Keep both horizontal and vertical scroll positions in sync.
             _leftScrollViewer.SetCurrentValue(
                 ScrollViewer.OffsetProperty,
-                new Vector(_leftScrollViewer.Offset.X, _rightScrollViewer.Offset.Y));
+                new Vector(_rightScrollViewer.Offset.X, _rightScrollViewer.Offset.Y));
         }
         finally
         {

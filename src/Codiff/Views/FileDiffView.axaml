@@ -9,9 +9,9 @@
     <Grid RowDefinitions="Auto,*">
 
         <!-- File path headers -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="#F8F8F8"
-              IsVisible="{Binding LeftFilePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <Border Grid.Column="0" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1">
+        <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="#F8F8F8">
+            <Border Grid.Column="0" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding LeftFileExists}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0"
                                Text="{Binding LeftFilePath}"
@@ -33,7 +33,8 @@
                 </Grid>
             </Border>
             <Border Grid.Column="1" Background="#DDDDDD" />
-            <Border Grid.Column="2" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1">
+            <Border Grid.Column="2" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding RightFileExists}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0"
                                Text="{Binding RightFilePath}"

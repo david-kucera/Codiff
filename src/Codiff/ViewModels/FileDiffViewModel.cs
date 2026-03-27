@@ -36,6 +36,12 @@ public partial class FileDiffViewModel : ObservableObject
     [ObservableProperty]
     private string _rightStatusText = string.Empty;
 
+    [ObservableProperty]
+    private bool _leftFileExists;
+
+    [ObservableProperty]
+    private bool _rightFileExists;
+
     private bool _isLeftModified;
     private bool _isRightModified;
     private bool _suppressTextEdited;
@@ -85,6 +91,11 @@ public partial class FileDiffViewModel : ObservableObject
         _isRightModified = false;
         LeftStatusText = string.Empty;
         RightStatusText = string.Empty;
+
+        _leftFileExists = result.LeftFileExists;
+        _rightFileExists = result.RightFileExists;
+        OnPropertyChanged("LeftFileExists");
+        OnPropertyChanged("RightFileExists");
 
         _suppressTextEdited = false;
 

@@ -45,6 +45,8 @@ public class FileDiffService
         {
             LeftFilePath = leftPath,
             RightFilePath = rightPath,
+            LeftFileExists = !string.IsNullOrEmpty(leftPath) && File.Exists(leftPath),
+            RightFileExists = !string.IsNullOrEmpty(rightPath) && File.Exists(rightPath),
             Lines = lines,
             DiffHunkIndices = hunkIndices
         };

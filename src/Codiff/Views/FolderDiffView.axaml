@@ -106,7 +106,7 @@
 													   FontFamily="Consolas,Courier New,monospace"
 													   FontSize="11"
 													   VerticalAlignment="Center"
-                                Foreground="Black"
+													   Foreground="Black"
 													   TextTrimming="CharacterEllipsis"
 													   ToolTip.Tip="{Binding RightFullPath}" />
 										</Grid>
@@ -119,25 +119,5 @@
                </ScrollViewer>
 			</Grid>
 		</Grid>
-
-        <!-- Legend -->
-        <StackPanel DockPanel.Dock="Bottom"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    Margin="8,4"
-                    HorizontalAlignment="Center">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <TextBlock Text="~" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="modified" FontSize="10" Foreground="#666" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <TextBlock Text="+" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="only right" FontSize="10" Foreground="#666" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <TextBlock Text="-" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="only left" FontSize="10" Foreground="#666" />
-            </StackPanel>
-        </StackPanel>
     </DockPanel>
 </UserControl>
