@@ -39,15 +39,15 @@
                              Background="White">
 					<TreeView.ItemTemplate>
 						<DataTemplate x:DataType="vm:FolderNodeViewModel">
-							<TreeViewItem ItemsSource="{Binding Children}">
+							<TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
 								<TreeViewItem.Header>
-									<Border Background="{Binding StatusColor}"
+									<Border Background="{Binding LeftStatusColor}"
 											Padding="2,1"
 											DoubleTapped="OnNodeDoubleTapped">
 										<Grid ColumnDefinitions="20,*">
 											<!-- Status icon -->
 											<TextBlock Grid.Column="0"
-													   Text="{Binding StatusIcon}"
+													   Text="{Binding LeftStatusIcon}"
 													   FontFamily="Consolas,Courier New,monospace"
 													   FontSize="12"
 													   VerticalAlignment="Center"
@@ -86,15 +86,15 @@
                              Background="White">
 					<TreeView.ItemTemplate>
 						<DataTemplate x:DataType="vm:FolderNodeViewModel">
-							<TreeViewItem ItemsSource="{Binding Children}">
+							<TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
 								<TreeViewItem.Header>
-									<Border Background="{Binding StatusColor}"
+									<Border Background="{Binding RightStatusColor}"
 											Padding="2,1"
 											DoubleTapped="OnNodeDoubleTapped">
 										<Grid ColumnDefinitions="20,*">
 											<!-- Status icon -->
 											<TextBlock Grid.Column="0"
-													   Text="{Binding StatusIcon}"
+													   Text="{Binding RightStatusIcon}"
 													   FontFamily="Consolas,Courier New,monospace"
 													   FontSize="12"
 													   VerticalAlignment="Center"

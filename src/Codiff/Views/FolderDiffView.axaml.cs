@@ -232,24 +232,20 @@ public partial class FolderDiffView : UserControl
         if (DataContext is not FolderDiffViewModel vm)
             return;
 
-        var targetSide = openedNode.Side == FolderSide.Left ? FolderSide.Right : FolderSide.Left;
-
-        var match = FindNodeByRelativePathAndSide(vm.RootNodes, openedNode.RelativePath, targetSide);
+        var match = FindNodeByRelativePath(vm.RootNodes, openedNode.RelativePath);
         if (match == null)
             return;
 
-        var targetTree = targetSide == FolderSide.Left ? LeftTree : RightTree;
-        targetTree.SelectedItem = match;
+        match.IsExpanded = true;
     }
 
-    private static FolderNodeViewModel? FindNodeByRelativePathAndSide(
+    private static FolderNodeViewModel? FindNodeByRelativePath(
         IEnumerable<FolderNodeViewModel> roots,
-        string relativePath,
-        FolderSide side)
+        string relativePath)
     {
         foreach (var root in roots)
         {
-            var found = FindNodeRecursive(root, relativePath, side);
+            var found = FindNodeRecursive(root, relativePath);
             if (found != null)
                 return found;
         }
@@ -259,15 +255,14 @@ public partial class FolderDiffView : UserControl
 
     private static FolderNodeViewModel? FindNodeRecursive(
         FolderNodeViewModel node,
-        string relativePath,
-        FolderSide side)
+        string relativePath)
     {
-        if (node.Side == side && string.Equals(node.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(node.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase))
             return node;
 
         foreach (var child in node.Children)
         {
-            var found = FindNodeRecursive(child, relativePath, side);
+            var found = FindNodeRecursive(child, relativePath);
             if (found != null)
                 return found;
         }
