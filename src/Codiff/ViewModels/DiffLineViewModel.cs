@@ -13,7 +13,7 @@ public class SpanViewModel
 public partial class DiffLineViewModel : ObservableObject
 {
     private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#FFFACD"));
-    private static readonly IBrush PresentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
+    private static readonly IBrush OneSidedContentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
     private static readonly IBrush FillerBrush = new SolidColorBrush(Color.Parse("#EEEEEE"));
 
     public DiffLine Model { get; }
@@ -40,7 +40,7 @@ public partial class DiffLineViewModel : ObservableObject
     public IBrush LeftBackground => Model.LineType switch
     {
         LineType.Modified => ModifiedBrush,
-        LineType.Deleted => PresentBrush,
+        LineType.Deleted => OneSidedContentBrush,
         LineType.Filler => FillerBrush,
         _ => Brushes.White
     };
@@ -48,7 +48,7 @@ public partial class DiffLineViewModel : ObservableObject
     public IBrush RightBackground => Model.LineType switch
     {
         LineType.Modified => ModifiedBrush,
-        LineType.Added => PresentBrush,
+        LineType.Added => OneSidedContentBrush,
         LineType.Filler => FillerBrush,
         _ => Brushes.White
     };
