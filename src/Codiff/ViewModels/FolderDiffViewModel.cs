@@ -97,8 +97,7 @@ public partial class FolderDiffViewModel : ObservableObject
                         status = entry.Status;
                     }
 
-                    // Use a neutral side; both TreeViews share the same nodes.
-                    node = new FolderNodeViewModel(currentPath, status, leftPath, rightPath, isFile, FolderSide.Left, parent);
+                    node = new FolderNodeViewModel(currentPath, status, leftPath, rightPath, isFile, parent);
                     nodeLookup[currentPath] = node;
 
                     if (parent == null)

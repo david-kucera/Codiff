@@ -42,9 +42,6 @@ public partial class FolderNodeViewModel : ObservableObject
 
     public ObservableCollection<FolderNodeViewModel> Children { get; } = [];
 
-    // Side and parent are used to synchronize folder expansion between the two trees.
-    public FolderSide Side { get; }
-
     public FolderNodeViewModel? Parent { get; }
 
     [ObservableProperty]
@@ -57,30 +54,6 @@ public partial class FolderNodeViewModel : ObservableObject
     public IBrush LeftStatusColor => GetStatusColor(FolderSide.Left);
 
     public IBrush RightStatusColor => GetStatusColor(FolderSide.Right);
-
-    public string StatusIcon => Status switch
-    {
-        FileStatus.Modified => "~",
-        FileStatus.OnlyInLeft => "-",
-        FileStatus.OnlyInRight => "+",
-        _ => string.Empty
-    };
-
-    public string StatusText => Status switch
-    {
-        FileStatus.Modified => "modified",
-        FileStatus.OnlyInLeft => "only left",
-        FileStatus.OnlyInRight => "only right",
-        _ => string.Empty
-    };
-
-    public IBrush StatusColor => Status switch
-    {
-        FileStatus.Modified => ModifiedBrush,
-        FileStatus.OnlyInLeft => MissingBrush,
-        FileStatus.OnlyInRight => PresentBrush,
-        _ => Brushes.Transparent
-    };
 
     public string LeftName => !string.IsNullOrEmpty(LeftFullPath)
         ? System.IO.Path.GetFileName(LeftFullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))
@@ -96,7 +69,6 @@ public partial class FolderNodeViewModel : ObservableObject
         string? leftFullPath,
         string? rightFullPath,
         bool isFile,
-        FolderSide side,
         FolderNodeViewModel? parent)
     {
         RelativePath = relativePath;
@@ -104,7 +76,6 @@ public partial class FolderNodeViewModel : ObservableObject
         LeftFullPath = leftFullPath;
         RightFullPath = rightFullPath;
         IsFile = isFile;
-        Side = side;
         Parent = parent;
     }
 
@@ -159,6 +130,9 @@ public partial class FolderNodeViewModel : ObservableObject
                     hasMissing = true;
                     break;
             }
+
+            if (hasModified && hasPresentOnly && hasMissing)
+                break;
         }
 
         if (hasModified)
