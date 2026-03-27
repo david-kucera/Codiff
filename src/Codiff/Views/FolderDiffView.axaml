@@ -5,32 +5,112 @@
              x:DataType="vm:FolderDiffViewModel">
 
     <DockPanel>
-        <!-- Header -->
-        <Border DockPanel.Dock="Top"
-                Background="#E8E8E8"
-                Padding="8,6"
-                BorderBrush="#CCCCCC"
-                BorderThickness="0,0,0,1">
-            <TextBlock Text="Folder Contents"
-                       FontWeight="SemiBold"
-                       FontSize="12" />
-        </Border>
+        <!-- Path labels & split tree: left and right sides -->
+		<Grid DockPanel.Dock="Top" RowDefinitions="Auto,*" ColumnDefinitions="*,4,*" Margin="4,4,4,0">
+			<!-- Left path label -->
+			<TextBlock Grid.Row="0" Grid.Column="0"
+					   Text="{Binding LeftFolderPath}"
+					   FontSize="16"
+					   Foreground="Blue"
+					   TextTrimming="CharacterEllipsis"
+					   ToolTip.Tip="{Binding LeftFolderPath}"
+					   Cursor="Hand"
+					   Tapped="OnLeftPathDoubleTapped" />
 
-        <!-- Path labels -->
-        <StackPanel DockPanel.Dock="Top"
-                    Margin="4,4,4,0"
-                    Spacing="2">
-            <TextBlock Text="{Binding LeftFolderPath}"
-                       FontSize="10"
-                       Foreground="#666666"
-                       TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="{Binding LeftFolderPath}" />
-            <TextBlock Text="{Binding RightFolderPath}"
-                       FontSize="10"
-                       Foreground="#666666"
-                       TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="{Binding RightFolderPath}" />
-        </StackPanel>
+			<!-- Right path label -->
+			<TextBlock Grid.Row="0" Grid.Column="2"
+					   Text="{Binding RightFolderPath}"
+					   FontSize="16"
+					   Foreground="Blue"
+					   TextTrimming="CharacterEllipsis"
+					   ToolTip.Tip="{Binding RightFolderPath}"
+					   Cursor="Hand"
+					   Tapped="OnRightPathDoubleTapped" />
+
+			<!-- Split tree: left and right sides -->
+          <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,4,*" Margin="0,4,0,0">
+				<!-- Left side -->
+               <TreeView x:Name="LeftTree"
+					  Grid.Column="0"
+						  ItemsSource="{Binding RootNodes}"
+						  Background="White">
+					<TreeView.ItemTemplate>
+						<DataTemplate x:DataType="vm:FolderNodeViewModel">
+							<TreeViewItem ItemsSource="{Binding Children}">
+								<TreeViewItem.Header>
+									<Border Background="{Binding StatusColor}"
+											Padding="2,1"
+											DoubleTapped="OnNodeDoubleTapped">
+										<Grid ColumnDefinitions="20,*">
+											<!-- Status icon -->
+											<TextBlock Grid.Column="0"
+													   Text="{Binding StatusIcon}"
+													   FontFamily="Consolas,Courier New,monospace"
+													   FontSize="12"
+													   VerticalAlignment="Center"
+													   HorizontalAlignment="Center" />
+
+											<!-- Left name/path -->
+											<TextBlock Grid.Column="1"
+													   Text="{Binding LeftName}"
+													   FontFamily="Consolas,Courier New,monospace"
+													   FontSize="11"
+													   VerticalAlignment="Center"
+                                Foreground="Black"
+													   TextTrimming="CharacterEllipsis"
+													   ToolTip.Tip="{Binding LeftFullPath}" />
+										</Grid>
+									</Border>
+								</TreeViewItem.Header>
+							</TreeViewItem>
+						</DataTemplate>
+					</TreeView.ItemTemplate>
+				</TreeView>
+
+				<!-- Vertical splitter -->
+				<GridSplitter Grid.Column="1"
+							  Background="#DDDDDD"
+							  ResizeDirection="Columns" />
+
+				<!-- Right side -->
+               <TreeView x:Name="RightTree"
+					  Grid.Column="2"
+						  ItemsSource="{Binding RootNodes}"
+						  Background="White">
+					<TreeView.ItemTemplate>
+						<DataTemplate x:DataType="vm:FolderNodeViewModel">
+							<TreeViewItem ItemsSource="{Binding Children}">
+								<TreeViewItem.Header>
+									<Border Background="{Binding StatusColor}"
+											Padding="2,1"
+											DoubleTapped="OnNodeDoubleTapped">
+										<Grid ColumnDefinitions="20,*">
+											<!-- Status icon -->
+											<TextBlock Grid.Column="0"
+													   Text="{Binding StatusIcon}"
+													   FontFamily="Consolas,Courier New,monospace"
+													   FontSize="12"
+													   VerticalAlignment="Center"
+													   HorizontalAlignment="Center" />
+
+											<!-- Right name/path -->
+											<TextBlock Grid.Column="1"
+													   Text="{Binding RightName}"
+													   FontFamily="Consolas,Courier New,monospace"
+													   FontSize="11"
+													   VerticalAlignment="Center"
+                                Foreground="Black"
+													   TextTrimming="CharacterEllipsis"
+													   ToolTip.Tip="{Binding RightFullPath}" />
+										</Grid>
+									</Border>
+								</TreeViewItem.Header>
+							</TreeViewItem>
+						</DataTemplate>
+					</TreeView.ItemTemplate>
+				</TreeView>
+			</Grid>
+		</Grid>
 
         <!-- Legend -->
         <StackPanel DockPanel.Dock="Bottom"
@@ -39,52 +119,17 @@
                     Margin="8,4"
                     HorizontalAlignment="Center">
             <StackPanel Orientation="Horizontal" Spacing="2">
-                <TextBlock Text="=" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="same" FontSize="10" Foreground="#666" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="2">
                 <TextBlock Text="~" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
                 <TextBlock Text="modified" FontSize="10" Foreground="#666" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <TextBlock Text="+" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="added" FontSize="10" Foreground="#666" />
+                <TextBlock Text="only right" FontSize="10" Foreground="#666" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <TextBlock Text="-" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
-                <TextBlock Text="deleted" FontSize="10" Foreground="#666" />
+                <TextBlock Text="only left" FontSize="10" Foreground="#666" />
             </StackPanel>
         </StackPanel>
-
-        <!-- File list -->
-        <ListBox ItemsSource="{Binding Entries}"
-                 SelectedItem="{Binding SelectedEntry}"
-                 Background="White"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
-            <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:FolderEntryViewModel">
-                    <Border Background="{Binding StatusColor}"
-                            Padding="4,2"
-                            CornerRadius="2">
-                        <Grid ColumnDefinitions="20,*">
-                            <TextBlock Grid.Column="0"
-                                       Text="{Binding StatusIcon}"
-                                       FontFamily="Consolas,Courier New,monospace"
-                                       FontSize="13"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Center" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding RelativePath}"
-                                       FontFamily="Consolas,Courier New,monospace"
-                                       FontSize="11"
-                                       VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis"
-                                       ToolTip.Tip="{Binding RelativePath}" />
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
     </DockPanel>
 </UserControl>

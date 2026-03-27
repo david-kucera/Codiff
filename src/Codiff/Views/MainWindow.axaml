@@ -6,12 +6,11 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Codiff"
         Width="1280"
-        Height="800"
+        Height="960"
         MinWidth="800"
         MinHeight="500">
 
     <DockPanel>
-        <!-- Top Toolbar -->
         <Border DockPanel.Dock="Top"
                 Background="#F0F0F0"
                 BorderBrush="#CCCCCC"
@@ -27,9 +26,8 @@
             </StackPanel>
         </Border>
 
-        <!-- Main content area -->
         <Grid>
-            <views:FileDiffView DataContext="{Binding FileDiffViewModel}" />
+            <views:FolderDiffView DataContext="{Binding FolderDiffViewModel}" />
         </Grid>
     </DockPanel>
 </Window>

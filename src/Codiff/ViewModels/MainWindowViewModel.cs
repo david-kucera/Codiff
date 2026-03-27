@@ -42,6 +42,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (left != null && right != null)
         {
             IsFolderViewVisible = true;
+            FolderDiffViewModel.IsVisible = true;
             FolderDiffViewModel.LoadFolders(left, right);
         }
     }
@@ -60,5 +61,10 @@ public partial class MainWindowViewModel : ObservableObject
         {
             FileDiffViewModel.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
         }
+    }
+
+    partial void OnIsFolderViewVisibleChanged(bool value)
+    {
+        FolderDiffViewModel.IsVisible = value;
     }
 }
