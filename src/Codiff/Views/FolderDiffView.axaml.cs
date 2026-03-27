@@ -97,7 +97,7 @@ public partial class FolderDiffView : UserControl
     private void OnLeftScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
         if (_isSyncing || _rightScrollViewer == null || _leftScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0) return;
+        if (e.OffsetDelta.Y == 0) return;
 
         _isSyncing = true;
         try
@@ -115,7 +115,7 @@ public partial class FolderDiffView : UserControl
     private void OnRightScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
         if (_isSyncing || _leftScrollViewer == null || _rightScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0 && e.OffsetDelta.X == 0) return;
+        if (e.OffsetDelta.Y == 0) return;
 
         _isSyncing = true;
         try
@@ -132,6 +132,9 @@ public partial class FolderDiffView : UserControl
 
     private void OnFileEntrySelected(string leftPath, string rightPath)
     {
+        if (!IsPathSelectionSafe(leftPath, rightPath))
+            return;
+
         var vm = new FileDiffViewModel();
 
         if (!string.IsNullOrEmpty(leftPath) && !string.IsNullOrEmpty(rightPath))
@@ -140,11 +143,29 @@ public partial class FolderDiffView : UserControl
         }
         else if (!string.IsNullOrEmpty(leftPath))
         {
-            vm.LoadTexts(File.ReadAllText(leftPath), string.Empty, leftPath, string.Empty);
+            try
+            {
+                vm.LoadTexts(File.ReadAllText(leftPath), string.Empty, leftPath, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to read left file: {leftPath}");
+                System.Diagnostics.Debug.WriteLine(ex);
+                return;
+            }
         }
         else if (!string.IsNullOrEmpty(rightPath))
         {
-            vm.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
+            try
+            {
+                vm.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to read right file: {rightPath}");
+                System.Diagnostics.Debug.WriteLine(ex);
+                return;
+            }
         }
         else
         {
@@ -168,6 +189,42 @@ public partial class FolderDiffView : UserControl
             window.Show(owner);
         else
             window.Show();
+    }
+
+    private bool IsPathSelectionSafe(string leftPath, string rightPath)
+    {
+        if (DataContext is not FolderDiffViewModel vm)
+            return false;
+
+        if (!string.IsNullOrEmpty(leftPath) &&
+            !IsUnderFolder(leftPath, vm.LeftFolderPath))
+            return false;
+
+        if (!string.IsNullOrEmpty(rightPath) &&
+            !IsUnderFolder(rightPath, vm.RightFolderPath))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsUnderFolder(string filePath, string folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(folderPath))
+            return false;
+
+        var fullFilePath = Path.GetFullPath(filePath);
+        if (!File.Exists(fullFilePath))
+            return false;
+
+        var fullFolderPath = Path.GetFullPath(folderPath);
+        var relativePath = Path.GetRelativePath(fullFolderPath, fullFilePath);
+
+        if (Path.IsPathRooted(relativePath))
+            return false;
+
+        return !relativePath.Equals("..", StringComparison.Ordinal) &&
+               !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
+               !relativePath.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
     }
 
     private void OnFolderOpened(FolderNodeViewModel openedNode)
