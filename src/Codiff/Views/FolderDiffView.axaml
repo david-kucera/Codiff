@@ -30,10 +30,13 @@
 			<!-- Split tree: left and right sides -->
           <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,4,*" Margin="0,4,0,0">
 				<!-- Left side -->
-               <TreeView x:Name="LeftTree"
-					  Grid.Column="0"
-						  ItemsSource="{Binding RootNodes}"
-						  Background="White">
+               <ScrollViewer x:Name="LeftScrollViewer"
+                             Grid.Column="0"
+                             HorizontalScrollBarVisibility="Auto"
+                             VerticalScrollBarVisibility="Auto">
+                   <TreeView x:Name="LeftTree"
+                             ItemsSource="{Binding RootNodes}"
+                             Background="White">
 					<TreeView.ItemTemplate>
 						<DataTemplate x:DataType="vm:FolderNodeViewModel">
 							<TreeViewItem ItemsSource="{Binding Children}">
@@ -66,6 +69,7 @@
 						</DataTemplate>
 					</TreeView.ItemTemplate>
 				</TreeView>
+               </ScrollViewer>
 
 				<!-- Vertical splitter -->
 				<GridSplitter Grid.Column="1"
@@ -73,10 +77,13 @@
 							  ResizeDirection="Columns" />
 
 				<!-- Right side -->
-               <TreeView x:Name="RightTree"
-					  Grid.Column="2"
-						  ItemsSource="{Binding RootNodes}"
-						  Background="White">
+               <ScrollViewer x:Name="RightScrollViewer"
+                             Grid.Column="2"
+                             HorizontalScrollBarVisibility="Auto"
+                             VerticalScrollBarVisibility="Auto">
+                   <TreeView x:Name="RightTree"
+                             ItemsSource="{Binding RootNodes}"
+                             Background="White">
 					<TreeView.ItemTemplate>
 						<DataTemplate x:DataType="vm:FolderNodeViewModel">
 							<TreeViewItem ItemsSource="{Binding Children}">
@@ -109,6 +116,7 @@
 						</DataTemplate>
 					</TreeView.ItemTemplate>
 				</TreeView>
+               </ScrollViewer>
 			</Grid>
 		</Grid>
 
