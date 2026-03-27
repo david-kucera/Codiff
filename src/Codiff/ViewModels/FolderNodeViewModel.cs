@@ -20,6 +20,18 @@ public enum FolderSide
 /// </summary>
 public partial class FolderNodeViewModel : ObservableObject
 {
+    private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#FFFACD"));
+    private static readonly IBrush PresentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
+    private static readonly IBrush MissingBrush = new SolidColorBrush(Color.Parse("#FFCCCC"));
+
+    private enum NodeDisplayStatus
+    {
+        None,
+        Modified,
+        PresentOnlyOnThisSide,
+        MissingOnThisSide
+    }
+
     public string? LeftFullPath { get; }
     public string? RightFullPath { get; }
 
@@ -34,6 +46,17 @@ public partial class FolderNodeViewModel : ObservableObject
     public FolderSide Side { get; }
 
     public FolderNodeViewModel? Parent { get; }
+
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    public string LeftStatusIcon => GetStatusIcon(FolderSide.Left);
+
+    public string RightStatusIcon => GetStatusIcon(FolderSide.Right);
+
+    public IBrush LeftStatusColor => GetStatusColor(FolderSide.Left);
+
+    public IBrush RightStatusColor => GetStatusColor(FolderSide.Right);
 
     public string StatusIcon => Status switch
     {
@@ -53,9 +76,9 @@ public partial class FolderNodeViewModel : ObservableObject
 
     public IBrush StatusColor => Status switch
     {
-        FileStatus.Modified => new SolidColorBrush(Color.Parse("#FFFACD")),
-        FileStatus.OnlyInLeft => new SolidColorBrush(Color.Parse("#FFCCCC")),
-        FileStatus.OnlyInRight => new SolidColorBrush(Color.Parse("#CCFFCC")),
+        FileStatus.Modified => ModifiedBrush,
+        FileStatus.OnlyInLeft => MissingBrush,
+        FileStatus.OnlyInRight => PresentBrush,
         _ => Brushes.Transparent
     };
 
@@ -83,5 +106,73 @@ public partial class FolderNodeViewModel : ObservableObject
         IsFile = isFile;
         Side = side;
         Parent = parent;
+    }
+
+    private string GetStatusIcon(FolderSide side) => GetDisplayStatus(side) switch
+    {
+        NodeDisplayStatus.Modified => "~",
+        NodeDisplayStatus.PresentOnlyOnThisSide => "+",
+        NodeDisplayStatus.MissingOnThisSide => "-",
+        _ => string.Empty
+    };
+
+    private IBrush GetStatusColor(FolderSide side) => GetDisplayStatus(side) switch
+    {
+        NodeDisplayStatus.Modified => ModifiedBrush,
+        NodeDisplayStatus.PresentOnlyOnThisSide => PresentBrush,
+        NodeDisplayStatus.MissingOnThisSide => MissingBrush,
+        _ => Brushes.Transparent
+    };
+
+    private NodeDisplayStatus GetDisplayStatus(FolderSide side)
+    {
+        if (IsFile)
+        {
+            return Status switch
+            {
+                FileStatus.Modified => NodeDisplayStatus.Modified,
+                FileStatus.OnlyInLeft when side == FolderSide.Left => NodeDisplayStatus.PresentOnlyOnThisSide,
+                FileStatus.OnlyInRight when side == FolderSide.Right => NodeDisplayStatus.PresentOnlyOnThisSide,
+                FileStatus.OnlyInLeft or FileStatus.OnlyInRight => NodeDisplayStatus.MissingOnThisSide,
+                _ => NodeDisplayStatus.None
+            };
+        }
+
+        if (Children.Count == 0)
+            return NodeDisplayStatus.None;
+
+        bool hasModified = false;
+        bool hasPresentOnly = false;
+        bool hasMissing = false;
+
+        foreach (var child in Children)
+        {
+            switch (child.GetDisplayStatus(side))
+            {
+                case NodeDisplayStatus.Modified:
+                    hasModified = true;
+                    break;
+                case NodeDisplayStatus.PresentOnlyOnThisSide:
+                    hasPresentOnly = true;
+                    break;
+                case NodeDisplayStatus.MissingOnThisSide:
+                    hasMissing = true;
+                    break;
+            }
+        }
+
+        if (hasModified)
+            return NodeDisplayStatus.Modified;
+
+        if (hasPresentOnly && hasMissing)
+            return NodeDisplayStatus.Modified;
+
+        if (hasPresentOnly)
+            return NodeDisplayStatus.PresentOnlyOnThisSide;
+
+        if (hasMissing)
+            return NodeDisplayStatus.MissingOnThisSide;
+
+        return NodeDisplayStatus.None;
     }
 }
