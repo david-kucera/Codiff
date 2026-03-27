@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
