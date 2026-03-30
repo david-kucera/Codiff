@@ -46,20 +46,34 @@
                 BorderBrush="#CCCCCC"
                 BorderThickness="0,1,0,0"
                 Padding="8,4">
-            <StackPanel Orientation="Horizontal" Spacing="16">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
+            <Grid>
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
-                </StackPanel>
-            </StackPanel>
+
+                <!-- Show Statistics button – visible only when the stats panel is closed -->
+                <Button Content="📊 Show Statistics"
+                        Command="{Binding ShowStatsCommand}"
+                        IsVisible="{Binding !IsStatsVisible}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Padding="8,2"
+                        FontSize="11"
+                        Background="Transparent"
+                        BorderThickness="1"
+                        BorderBrush="#AAAAAA" />
+            </Grid>
         </Border>
 
         <!-- Split panes + statistics bar -->

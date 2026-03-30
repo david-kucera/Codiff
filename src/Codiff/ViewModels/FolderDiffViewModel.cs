@@ -104,6 +104,9 @@ public partial class FolderDiffViewModel : ObservableObject
     [RelayCommand]
     private void CloseStats() => IsStatsVisible = false;
 
+    [RelayCommand]
+    private void ShowStats() => IsStatsVisible = true;
+
     // ─────────────────────────────────────────────────────────────────────
 
     public event Action<string, string>? FileEntrySelected;
