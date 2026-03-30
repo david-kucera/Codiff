@@ -62,264 +62,221 @@
             </StackPanel>
         </Border>
 
-        <!-- Split panes: column headers + tree views -->
+        <!-- Split panes: left and right DataGrids -->
         <Grid ColumnDefinitions="*,4,*"
               Margin="4,0,4,4">
 
-            <!-- Left pane -->
-            <DockPanel Grid.Column="0">
-                <!-- Left column headers -->
-                <Border DockPanel.Dock="Top"
-                        Background="#E8E8E8"
-                        BorderBrush="#AAAAAA"
-                        BorderThickness="1,1,1,0">
-                    <Grid ColumnDefinitions="24,200,80,100,120">
-                        <Border Grid.Column="0"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0" />
-                        <Border Grid.Column="1"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Name"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                        <Border Grid.Column="2"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Size"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333"
-                                       HorizontalAlignment="Right" />
-                        </Border>
-                        <Border Grid.Column="3"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Type"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                        <Border Grid.Column="4"
-                                Padding="4,3">
-                            <TextBlock Text="Time"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                    </Grid>
-                </Border>
+            <!-- Left DataGrid -->
+            <DataGrid x:Name="LeftDataGrid"
+                      Grid.Column="0"
+                      ItemsSource="{Binding FlatRows}"
+                      AutoGenerateColumns="False"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="False"
+                      CanUserReorderColumns="False"
+                      IsReadOnly="True"
+                      Background="White"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      DoubleTapped="OnGridDoubleTapped">
+                <DataGrid.Columns>
 
-                <!-- Left tree -->
-                <Border BorderBrush="#AAAAAA"
-                        BorderThickness="1">
-                    <ScrollViewer x:Name="LeftScrollViewer"
-                                  HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Auto">
-                        <TreeView x:Name="LeftTree"
-                                  ItemsSource="{Binding RootNodes}"
-                                  Background="White">
-                            <TreeView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:FolderNodeViewModel">
-                                    <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-                                        <TreeViewItem.Header>
-                                            <Border Background="{Binding LeftStatusColor}"
-                                                    Padding="2,1"
-                                                    DoubleTapped="OnNodeDoubleTapped">
-                                                <Grid ColumnDefinitions="24,200,80,100,120">
-                                                    <!-- File system icon -->
-                                                    <Image Grid.Column="0"
-                                                           Source="{Binding LeftIcon}"
-                                                           Width="16"
-                                                           Height="16"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Center"
-                                                           Margin="2,0" />
+                    <!-- Expand/collapse toggle -->
+                    <DataGridTemplateColumn Header="" Width="26" CanUserResize="False" CanUserSort="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <Button Content="{Binding ExpandSymbol}"
+                                        Command="{Binding ToggleExpandedCommand}"
+                                        IsVisible="{Binding IsExpandable}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Padding="2,1"
+                                        FontSize="9"
+                                        Background="Transparent"
+                                        BorderThickness="0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Name column -->
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding LeftName}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip.Tip="{Binding LeftFullPath}"
-                                                               Margin="4,0,4,0" />
+                    <!-- Name (icon + label, indented) -->
+                    <DataGridTemplateColumn Header="Name" Width="200" MinWidth="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Spacing="2">
+                                    <Border Width="{Binding IndentWidth}" Height="1" />
+                                    <Image Source="{Binding LeftIcon}"
+                                           Width="16" Height="16"
+                                           VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding LeftName}"
+                                               FontFamily="Consolas,Courier New,monospace"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="Black"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding LeftFullPath}"
+                                               Margin="2,0,0,0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Size column -->
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{Binding LeftSize}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               HorizontalAlignment="Right"
-                                                               Margin="4,0,4,0" />
+                    <!-- Size -->
+                    <DataGridTemplateColumn Header="Size" Width="90" MinWidth="40">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding LeftSize}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,0,4,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Type column -->
-                                                    <TextBlock Grid.Column="3"
-                                                               Text="{Binding LeftType}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Margin="4,0,4,0" />
+                    <!-- Type -->
+                    <DataGridTemplateColumn Header="Type" Width="130" MinWidth="40">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding LeftType}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="4,0,0,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Time column -->
-                                                    <TextBlock Grid.Column="4"
-                                                               Text="{Binding LeftTime}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               Margin="4,0,4,0" />
-                                                </Grid>
-                                            </Border>
-                                        </TreeViewItem.Header>
-                                    </TreeViewItem>
-                                </DataTemplate>
-                            </TreeView.ItemTemplate>
-                        </TreeView>
-                    </ScrollViewer>
-                </Border>
-            </DockPanel>
+                    <!-- Time -->
+                    <DataGridTemplateColumn Header="Time" Width="160" MinWidth="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding LeftTime}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Margin="4,0,0,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                </DataGrid.Columns>
+            </DataGrid>
 
             <!-- Vertical splitter -->
             <GridSplitter Grid.Column="1"
                           Background="#DDDDDD"
                           ResizeDirection="Columns" />
 
-            <!-- Right pane -->
-            <DockPanel Grid.Column="2">
-                <!-- Right column headers -->
-                <Border DockPanel.Dock="Top"
-                        Background="#E8E8E8"
-                        BorderBrush="#AAAAAA"
-                        BorderThickness="1,1,1,0">
-                    <Grid ColumnDefinitions="24,200,80,100,120">
-                        <Border Grid.Column="0"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0" />
-                        <Border Grid.Column="1"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Name"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                        <Border Grid.Column="2"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Size"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333"
-                                       HorizontalAlignment="Right" />
-                        </Border>
-                        <Border Grid.Column="3"
-                                BorderBrush="#AAAAAA"
-                                BorderThickness="0,0,1,0"
-                                Padding="4,3">
-                            <TextBlock Text="Type"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                        <Border Grid.Column="4"
-                                Padding="4,3">
-                            <TextBlock Text="Time"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#333333" />
-                        </Border>
-                    </Grid>
-                </Border>
+            <!-- Right DataGrid -->
+            <DataGrid x:Name="RightDataGrid"
+                      Grid.Column="2"
+                      ItemsSource="{Binding FlatRows}"
+                      AutoGenerateColumns="False"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="False"
+                      CanUserReorderColumns="False"
+                      IsReadOnly="True"
+                      Background="White"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      DoubleTapped="OnGridDoubleTapped">
+                <DataGrid.Columns>
 
-                <!-- Right tree -->
-                <Border BorderBrush="#AAAAAA"
-                        BorderThickness="1">
-                    <ScrollViewer x:Name="RightScrollViewer"
-                                  HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Auto">
-                        <TreeView x:Name="RightTree"
-                                  ItemsSource="{Binding RootNodes}"
-                                  Background="White">
-                            <TreeView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:FolderNodeViewModel">
-                                    <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-                                        <TreeViewItem.Header>
-                                            <Border Background="{Binding RightStatusColor}"
-                                                    Padding="2,1"
-                                                    DoubleTapped="OnNodeDoubleTapped">
-                                                <Grid ColumnDefinitions="24,200,80,100,120">
-                                                    <!-- File system icon -->
-                                                    <Image Grid.Column="0"
-                                                           Source="{Binding RightIcon}"
-                                                           Width="16"
-                                                           Height="16"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Center"
-                                                           Margin="2,0" />
+                    <!-- Expand/collapse toggle -->
+                    <DataGridTemplateColumn Header="" Width="26" CanUserResize="False" CanUserSort="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <Button Content="{Binding ExpandSymbol}"
+                                        Command="{Binding ToggleExpandedCommand}"
+                                        IsVisible="{Binding IsExpandable}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Padding="2,1"
+                                        FontSize="9"
+                                        Background="Transparent"
+                                        BorderThickness="0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Name column -->
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding RightName}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip.Tip="{Binding RightFullPath}"
-                                                               Margin="4,0,4,0" />
+                    <!-- Name (icon + label, indented) -->
+                    <DataGridTemplateColumn Header="Name" Width="200" MinWidth="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Spacing="2">
+                                    <Border Width="{Binding IndentWidth}" Height="1" />
+                                    <Image Source="{Binding RightIcon}"
+                                           Width="16" Height="16"
+                                           VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding RightName}"
+                                               FontFamily="Consolas,Courier New,monospace"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="Black"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding RightFullPath}"
+                                               Margin="2,0,0,0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Size column -->
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{Binding RightSize}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               HorizontalAlignment="Right"
-                                                               Margin="4,0,4,0" />
+                    <!-- Size -->
+                    <DataGridTemplateColumn Header="Size" Width="90" MinWidth="40">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding RightSize}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,0,4,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Type column -->
-                                                    <TextBlock Grid.Column="3"
-                                                               Text="{Binding RightType}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Margin="4,0,4,0" />
+                    <!-- Type -->
+                    <DataGridTemplateColumn Header="Type" Width="130" MinWidth="40">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding RightType}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="4,0,0,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                                                    <!-- Time column -->
-                                                    <TextBlock Grid.Column="4"
-                                                               Text="{Binding RightTime}"
-                                                               FontFamily="Consolas,Courier New,monospace"
-                                                               FontSize="11"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="Black"
-                                                               Margin="4,0,4,0" />
-                                                </Grid>
-                                            </Border>
-                                        </TreeViewItem.Header>
-                                    </TreeViewItem>
-                                </DataTemplate>
-                            </TreeView.ItemTemplate>
-                        </TreeView>
-                    </ScrollViewer>
-                </Border>
-            </DockPanel>
+                    <!-- Time -->
+                    <DataGridTemplateColumn Header="Time" Width="160" MinWidth="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                <TextBlock Text="{Binding RightTime}"
+                                           FontFamily="Consolas,Courier New,monospace"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="Black"
+                                           Margin="4,0,0,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                </DataGrid.Columns>
+            </DataGrid>
+
         </Grid>
     </DockPanel>
 </UserControl>
