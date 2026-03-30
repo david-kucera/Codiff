@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Codiff.ViewModels;
 
@@ -47,6 +48,7 @@ public partial class FolderNodeViewModel : ObservableObject
     public FolderNodeViewModel? Parent { get; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExpandSymbol))]
     private bool _isExpanded;
 
     [ObservableProperty]
@@ -81,6 +83,18 @@ public partial class FolderNodeViewModel : ObservableObject
 
     public IBrush RightStatusColor => GetStatusColor(FolderSide.Right);
 
+    /// <summary>Tree depth (0 = root). Set by FolderDiffViewModel when building flat rows.</summary>
+    public int Depth { get; set; }
+
+    /// <summary>Left-margin width in pixels used to indent the Name cell.</summary>
+    public double IndentWidth => Depth * 16.0;
+
+    /// <summary>Triangle symbol shown in the expand/collapse toggle button.</summary>
+    public string ExpandSymbol => IsExpandable ? (IsExpanded ? "▼" : "▶") : string.Empty;
+
+    /// <summary>True for folder nodes that have at least one child.</summary>
+    public bool IsExpandable => !IsFile && Children.Count > 0;
+
     public string LeftName => !string.IsNullOrEmpty(LeftFullPath)
         ? System.IO.Path.GetFileName(LeftFullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))
         : System.IO.Path.GetFileName(RelativePath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
@@ -88,6 +102,13 @@ public partial class FolderNodeViewModel : ObservableObject
     public string RightName => !string.IsNullOrEmpty(RightFullPath)
         ? System.IO.Path.GetFileName(RightFullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))
         : System.IO.Path.GetFileName(RelativePath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+    [RelayCommand]
+    private void ToggleExpanded()
+    {
+        if (IsExpandable)
+            IsExpanded = !IsExpanded;
+    }
 
     public FolderNodeViewModel(
         string relativePath,

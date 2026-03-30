@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Interactivity;
 using Codiff.ViewModels;
 
@@ -7,60 +8,30 @@ namespace Codiff.Views;
 
 public partial class FolderDiffView : UserControl
 {
-    private ScrollViewer? _leftScrollViewer;
-    private ScrollViewer? _rightScrollViewer;
     private bool _isSyncing;
     private FolderDiffViewModel? _subscribedViewModel;
 
     public FolderDiffView()
     {
         InitializeComponent();
-
         DataContextChanged += OnDataContextChanged;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        InitializeScrollSync();
+        SetupGrids();
     }
 
-    private void OnListBoxSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (DataContext is FolderDiffViewModel vm && sender is ListBox lb)
-        {
-            if (lb.SelectedItem is FolderEntryViewModel entry)
-                vm.SelectEntryCommand.Execute(entry);
-        }
-    }
+    // ── Path-label taps ────────────────────────────────────────────────────
 
     private void OnLeftPathDoubleTapped(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is FolderDiffViewModel vm)
-        {
-            vm.OpenFolderInExplorer(isLeft: true);
-        }
-    }
+        => (DataContext as FolderDiffViewModel)?.OpenFolderInExplorer(isLeft: true);
 
     private void OnRightPathDoubleTapped(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is FolderDiffViewModel vm)
-        {
-            vm.OpenFolderInExplorer(isLeft: false);
-        }
-    }
+        => (DataContext as FolderDiffViewModel)?.OpenFolderInExplorer(isLeft: false);
 
-    private void OnNodeDoubleTapped(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not FolderDiffViewModel vm)
-            return;
-
-        if (sender is Control control && control.DataContext is FolderNodeViewModel node)
-        {
-            vm.SelectedNode = node;
-            vm.OpenSelectedNode();
-        }
-    }
+    // ── DataContext lifecycle ───────────────────────────────────────────────
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
@@ -70,65 +41,102 @@ public partial class FolderDiffView : UserControl
             _subscribedViewModel.FileEntrySelected -= OnFileEntrySelected;
         }
 
-        if (DataContext is FolderDiffViewModel vm)
+        _subscribedViewModel = DataContext as FolderDiffViewModel;
+
+        if (_subscribedViewModel != null)
         {
-            vm.FolderOpened += OnFolderOpened;
-            vm.FileEntrySelected += OnFileEntrySelected;
-            _subscribedViewModel = vm;
-        }
-        else
-        {
-            _subscribedViewModel = null;
+            _subscribedViewModel.FolderOpened += OnFolderOpened;
+            _subscribedViewModel.FileEntrySelected += OnFileEntrySelected;
         }
     }
 
-    private void InitializeScrollSync()
+    // ── Grid wiring (row colours + scroll sync) ─────────────────────────────
+
+    private void SetupGrids()
     {
-        _leftScrollViewer = this.FindControl<ScrollViewer>("LeftScrollViewer");
-        _rightScrollViewer = this.FindControl<ScrollViewer>("RightScrollViewer");
+        var leftGrid = this.FindControl<DataGrid>("LeftDataGrid");
+        var rightGrid = this.FindControl<DataGrid>("RightDataGrid");
+        if (leftGrid == null || rightGrid == null) return;
 
-        if (_leftScrollViewer != null)
-            _leftScrollViewer.ScrollChanged += OnLeftScrollChanged;
+        // Per-row background colours ─────────────────────────────────────────
+        leftGrid.LoadingRow += (_, args) =>
+        {
+            if (args.Row.DataContext is FolderNodeViewModel node)
+                args.Row.Background = node.LeftStatusColor;
+        };
 
-        if (_rightScrollViewer != null)
-            _rightScrollViewer.ScrollChanged += OnRightScrollChanged;
+        rightGrid.LoadingRow += (_, args) =>
+        {
+            if (args.Row.DataContext is FolderNodeViewModel node)
+                args.Row.Background = node.RightStatusColor;
+        };
+
+        // Vertical scroll synchronisation ────────────────────────────────────
+        ScrollViewer? leftSv = null;
+        ScrollViewer? rightSv = null;
+
+        leftGrid.TemplateApplied += (_, args) =>
+        {
+            leftSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
+            if (leftSv != null)
+                leftSv.ScrollChanged += (_, ev) =>
+                {
+                    if (_isSyncing || ev.OffsetDelta.Y == 0 || rightSv == null) return;
+                    _isSyncing = true;
+                    try
+                    {
+                        rightSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(rightSv.Offset.X, leftSv.Offset.Y));
+                    }
+                    finally
+                    {
+                        _isSyncing = false;
+                    }
+                };
+        };
+
+        rightGrid.TemplateApplied += (_, args) =>
+        {
+            rightSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
+            if (rightSv != null)
+                rightSv.ScrollChanged += (_, ev) =>
+                {
+                    if (_isSyncing || ev.OffsetDelta.Y == 0 || leftSv == null) return;
+                    _isSyncing = true;
+                    try
+                    {
+                        leftSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(leftSv.Offset.X, rightSv.Offset.Y));
+                    }
+                    finally
+                    {
+                        _isSyncing = false;
+                    }
+                };
+        };
     }
 
-    private void OnLeftScrollChanged(object? sender, ScrollChangedEventArgs e)
+    // ── Double-click → open file diff ──────────────────────────────────────
+
+    private void OnGridDoubleTapped(object? sender, RoutedEventArgs e)
     {
-        if (_isSyncing || _rightScrollViewer == null || _leftScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0) return;
+        if (DataContext is not FolderDiffViewModel vm) return;
+        if (sender is not DataGrid grid) return;
+        if (grid.SelectedItem is not FolderNodeViewModel node) return;
+        if (!node.IsFile) return; // Folders are expanded/collapsed via the toggle button
 
-        _isSyncing = true;
-        try
-        {
-            _rightScrollViewer.SetCurrentValue(
-                ScrollViewer.OffsetProperty,
-                new Vector(_rightScrollViewer.Offset.X, _leftScrollViewer.Offset.Y));
-        }
-        finally
-        {
-            _isSyncing = false;
-        }
+        vm.SelectedNode = node;
+        vm.OpenSelectedNode();
     }
 
-    private void OnRightScrollChanged(object? sender, ScrollChangedEventArgs e)
+    // ── FolderOpened (expand node from outside) ────────────────────────────
+
+    private void OnFolderOpened(FolderNodeViewModel openedNode)
     {
-        if (_isSyncing || _leftScrollViewer == null || _rightScrollViewer == null) return;
-        if (e.OffsetDelta.Y == 0) return;
-
-        _isSyncing = true;
-        try
-        {
-            _leftScrollViewer.SetCurrentValue(
-                ScrollViewer.OffsetProperty,
-                new Vector(_leftScrollViewer.Offset.X, _rightScrollViewer.Offset.Y));
-        }
-        finally
-        {
-            _isSyncing = false;
-        }
+        // Setting IsExpanded triggers FolderDiffViewModel.OnNodePropertyChanged
+        // which rebuilds FlatRows, making both DataGrids update automatically.
+        openedNode.IsExpanded = true;
     }
+
+    // ── FileEntrySelected (open file diff window) ──────────────────────────
 
     private void OnFileEntrySelected(string leftPath, string rightPath)
     {
@@ -225,48 +233,5 @@ public partial class FolderDiffView : UserControl
         return !relativePath.Equals("..", StringComparison.Ordinal) &&
                !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
                !relativePath.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
-    }
-
-    private void OnFolderOpened(FolderNodeViewModel openedNode)
-    {
-        if (DataContext is not FolderDiffViewModel vm)
-            return;
-
-        var match = FindNodeByRelativePath(vm.RootNodes, openedNode.RelativePath);
-        if (match == null)
-            return;
-
-        match.IsExpanded = true;
-    }
-
-    private static FolderNodeViewModel? FindNodeByRelativePath(
-        IEnumerable<FolderNodeViewModel> roots,
-        string relativePath)
-    {
-        foreach (var root in roots)
-        {
-            var found = FindNodeRecursive(root, relativePath);
-            if (found != null)
-                return found;
-        }
-
-        return null;
-    }
-
-    private static FolderNodeViewModel? FindNodeRecursive(
-        FolderNodeViewModel node,
-        string relativePath)
-    {
-        if (string.Equals(node.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase))
-            return node;
-
-        foreach (var child in node.Children)
-        {
-            var found = FindNodeRecursive(child, relativePath);
-            if (found != null)
-                return found;
-        }
-
-        return null;
     }
 }

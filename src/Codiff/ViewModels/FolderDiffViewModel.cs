@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -30,6 +31,12 @@ public partial class FolderDiffViewModel : ObservableObject
     [ObservableProperty]
     private FolderNodeViewModel? _selectedNode;
 
+    /// <summary>
+    /// Flat, ordered list of currently visible tree nodes.
+    /// Expand/collapse actions rebuild this list in-place.
+    /// </summary>
+    public ObservableCollection<FolderNodeViewModel> FlatRows { get; } = [];
+
     public bool IsVisible { get; set; }
 
     public event Action<string, string>? FileEntrySelected;
@@ -54,6 +61,10 @@ public partial class FolderDiffViewModel : ObservableObject
 
     private void BuildTree(Codiff.Models.FolderDiffResult result)
     {
+        // Unsubscribe from all existing nodes before clearing
+        foreach (var node in GetAllNodes(RootNodes))
+            node.PropertyChanged -= OnNodePropertyChanged;
+
         _rootNodes.Clear();
 
         // Build a single logical hierarchy keyed by relative path
@@ -112,6 +123,47 @@ public partial class FolderDiffViewModel : ObservableObject
 
                 parent = node;
             }
+        }
+
+        // Subscribe to new nodes and build the initial flat row list
+        foreach (var node in GetAllNodes(RootNodes))
+            node.PropertyChanged += OnNodePropertyChanged;
+
+        RebuildFlatRows();
+    }
+
+    private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded))
+            RebuildFlatRows();
+    }
+
+    private void RebuildFlatRows()
+    {
+        FlatRows.Clear();
+        foreach (var root in RootNodes)
+            AddNodeToFlatRows(root, depth: 0);
+    }
+
+    private void AddNodeToFlatRows(FolderNodeViewModel node, int depth)
+    {
+        node.Depth = depth;
+        FlatRows.Add(node);
+
+        if (!node.IsFile && node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+                AddNodeToFlatRows(child, depth + 1);
+        }
+    }
+
+    private static IEnumerable<FolderNodeViewModel> GetAllNodes(IEnumerable<FolderNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+            foreach (var descendant in GetAllNodes(node.Children))
+                yield return descendant;
         }
     }
 
