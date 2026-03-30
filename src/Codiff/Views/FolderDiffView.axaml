@@ -46,27 +46,46 @@
                 BorderBrush="#CCCCCC"
                 BorderThickness="0,1,0,0"
                 Padding="8,4">
-            <StackPanel Orientation="Horizontal" Spacing="16">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
+            <Grid>
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
-                    <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
-                </StackPanel>
-            </StackPanel>
+
+                <!-- Show Statistics button – visible only when the stats panel is closed -->
+                <Button Content="📊 Show Statistics"
+                        Command="{Binding ShowStatsCommand}"
+                        IsVisible="{Binding !IsStatsVisible}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Padding="8,2"
+                        FontSize="11"
+                        Background="Transparent"
+                        BorderThickness="1"
+                        BorderBrush="#AAAAAA" />
+            </Grid>
         </Border>
 
-        <!-- Split panes: left and right DataGrids -->
-        <Grid ColumnDefinitions="*,4,*"
+        <!-- Split panes + statistics bar -->
+        <Grid x:Name="MainContentGrid"
+              RowDefinitions="*,5,100"
               Margin="4,0,4,4">
 
-            <!-- Left DataGrid -->
+            <!-- Row 0: left and right DataGrids -->
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="*,4,*">
+
+                <!-- Left DataGrid -->
             <DataGrid x:Name="LeftDataGrid"
                       Grid.Column="0"
                       ItemsSource="{Binding FlatRows}"
@@ -170,9 +189,9 @@
             </DataGrid>
 
             <!-- Vertical splitter -->
-            <GridSplitter Grid.Column="1"
-                          Background="#DDDDDD"
-                          ResizeDirection="Columns" />
+                <GridSplitter Grid.Column="1"
+                              Background="#DDDDDD"
+                              ResizeDirection="Columns" />
 
             <!-- Right DataGrid -->
             <DataGrid x:Name="RightDataGrid"
@@ -276,6 +295,85 @@
 
                 </DataGrid.Columns>
             </DataGrid>
+
+            </Grid>
+
+            <!-- Row 1: horizontal splitter for resizing the statistics panel -->
+            <GridSplitter x:Name="StatsSplitter"
+                          Grid.Row="1"
+                          IsVisible="{Binding IsStatsVisible}"
+                          ResizeDirection="Rows"
+                          HorizontalAlignment="Stretch"
+                          Background="#DDDDDD" />
+
+            <!-- Row 2: statistics stacked bar chart -->
+            <Border x:Name="StatsPanel"
+                    Grid.Row="2"
+                    IsVisible="{Binding IsStatsVisible}"
+                    Background="#F8F8F8"
+                    BorderBrush="#CCCCCC"
+                    BorderThickness="0,1,0,0">
+                <Grid Margin="8,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Stacked bar + legend labels -->
+                    <StackPanel Grid.Column="0" Spacing="6">
+
+                        <!-- 100% horizontal stacked bar -->
+                        <Grid Height="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{Binding IdenticalBarStar}" />
+                                <ColumnDefinition Width="{Binding OneSideBarStar}" />
+                                <ColumnDefinition Width="{Binding ModifiedBarStar}" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Background="#2C2C2C"
+                                    CornerRadius="3,0,0,3"
+                                    ToolTip.Tip="{Binding IdenticalLabel}" />
+                            <Border Grid.Column="1"
+                                    Background="#28A745"
+                                    ToolTip.Tip="{Binding OneSideLabel}" />
+                            <Border Grid.Column="2"
+                                    Background="#FFC107"
+                                    CornerRadius="0,3,3,0"
+                                    ToolTip.Tip="{Binding ModifiedLabel}" />
+                        </Grid>
+
+                        <!-- Legend labels -->
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Border Width="12" Height="12" Background="#2C2C2C"
+                                        CornerRadius="2" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding IdenticalLabel}" FontSize="11" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Border Width="12" Height="12" Background="#28A745"
+                                        CornerRadius="2" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding OneSideLabel}" FontSize="11" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Border Width="12" Height="12" Background="#FFC107"
+                                        CornerRadius="2" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ModifiedLabel}" FontSize="11" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Close button -->
+                    <Button Grid.Column="1"
+                            Content="✕"
+                            Command="{Binding CloseStatsCommand}"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            Padding="6,2"
+                            FontSize="12"
+                            Background="Transparent"
+                            BorderThickness="0" />
+                </Grid>
+            </Border>
 
         </Grid>
     </DockPanel>
