@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Codiff.ViewModels;
 
@@ -71,45 +71,35 @@ public partial class FolderDiffView : UserControl
                 args.Row.Background = node.RightStatusColor;
         };
 
-        // Vertical scroll synchronisation ────────────────────────────────────
-        ScrollViewer? leftSv = null;
-        ScrollViewer? rightSv = null;
+        // Vertical scroll synchronisation via PART_VerticalScrollbar ─────────
+        // Note: Avalonia's DataGrid has no PART_ScrollViewer; scrolling is driven
+        // through PART_VerticalScrollbar (a ScrollBar) connected to the rows presenter.
+        ScrollBar? leftVSb = null;
+        ScrollBar? rightVSb = null;
 
         leftGrid.TemplateApplied += (_, args) =>
         {
-            leftSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
-            if (leftSv != null)
-                leftSv.ScrollChanged += (_, ev) =>
+            leftVSb = args.NameScope.Find<ScrollBar>("PART_VerticalScrollbar");
+            if (leftVSb != null)
+                leftVSb.ValueChanged += (_, _) =>
                 {
-                    if (_isSyncing || ev.OffsetDelta.Y == 0 || rightSv == null) return;
+                    if (_isSyncing || rightVSb == null) return;
                     _isSyncing = true;
-                    try
-                    {
-                        rightSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(rightSv.Offset.X, leftSv.Offset.Y));
-                    }
-                    finally
-                    {
-                        _isSyncing = false;
-                    }
+                    try { rightVSb.Value = leftVSb.Value; }
+                    finally { _isSyncing = false; }
                 };
         };
 
         rightGrid.TemplateApplied += (_, args) =>
         {
-            rightSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
-            if (rightSv != null)
-                rightSv.ScrollChanged += (_, ev) =>
+            rightVSb = args.NameScope.Find<ScrollBar>("PART_VerticalScrollbar");
+            if (rightVSb != null)
+                rightVSb.ValueChanged += (_, _) =>
                 {
-                    if (_isSyncing || ev.OffsetDelta.Y == 0 || leftSv == null) return;
+                    if (_isSyncing || leftVSb == null) return;
                     _isSyncing = true;
-                    try
-                    {
-                        leftSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(leftSv.Offset.X, rightSv.Offset.Y));
-                    }
-                    finally
-                    {
-                        _isSyncing = false;
-                    }
+                    try { leftVSb.Value = rightVSb.Value; }
+                    finally { _isSyncing = false; }
                 };
         };
     }
