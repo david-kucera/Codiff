@@ -55,6 +55,24 @@ public partial class FolderNodeViewModel : ObservableObject
     [ObservableProperty]
     private Bitmap? _rightIcon;
 
+    [ObservableProperty]
+    private string _leftSize = "";
+
+    [ObservableProperty]
+    private string _rightSize = "";
+
+    [ObservableProperty]
+    private string _leftType = "";
+
+    [ObservableProperty]
+    private string _rightType = "";
+
+    [ObservableProperty]
+    private string _leftTime = "";
+
+    [ObservableProperty]
+    private string _rightTime = "";
+
     public string LeftStatusIcon => GetStatusIcon(FolderSide.Left);
 
     public string RightStatusIcon => GetStatusIcon(FolderSide.Right);
@@ -87,6 +105,7 @@ public partial class FolderNodeViewModel : ObservableObject
         Parent = parent;
 
         LoadIcons();
+        LoadFileInfo();
     }
 
     private void LoadIcons()
@@ -133,6 +152,100 @@ public partial class FolderNodeViewModel : ObservableObject
                 }
             }
         });
+    }
+
+    private void LoadFileInfo()
+    {
+        // Load file info asynchronously
+        Task.Run(() =>
+        {
+            if (!string.IsNullOrEmpty(LeftFullPath))
+            {
+                try
+                {
+                    if (IsFile && File.Exists(LeftFullPath))
+                    {
+                        var fileInfo = new FileInfo(LeftFullPath);
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            LeftSize = FormatSize(fileInfo.Length);
+                            LeftType = GetFileType(LeftFullPath);
+                            LeftTime = fileInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                        });
+                    }
+                    else if (!IsFile && Directory.Exists(LeftFullPath))
+                    {
+                        var dirInfo = new DirectoryInfo(LeftFullPath);
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            LeftSize = "";
+                            LeftType = "File folder";
+                            LeftTime = dirInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                        });
+                    }
+                }
+                catch { }
+            }
+
+            if (!string.IsNullOrEmpty(RightFullPath))
+            {
+                try
+                {
+                    if (IsFile && File.Exists(RightFullPath))
+                    {
+                        var fileInfo = new FileInfo(RightFullPath);
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            RightSize = FormatSize(fileInfo.Length);
+                            RightType = GetFileType(RightFullPath);
+                            RightTime = fileInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                        });
+                    }
+                    else if (!IsFile && Directory.Exists(RightFullPath))
+                    {
+                        var dirInfo = new DirectoryInfo(RightFullPath);
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            RightSize = "";
+                            RightType = "File folder";
+                            RightTime = dirInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                        });
+                    }
+                }
+                catch { }
+            }
+        });
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private static string GetFileType(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".exe" => "Application",
+            ".dll" => "Dynamic Link Library",
+            ".txt" => "Text Document",
+            ".xml" => "XML Document",
+            ".config" => "Configuration File",
+            ".cs" => "C# Source File",
+            ".csproj" => "C# Project File",
+            ".sln" => "Visual Studio Solution",
+            ".json" => "JSON Document",
+            _ => $"{extension.TrimStart('.')} File"
+        };
     }
 
     private string GetStatusIcon(FolderSide side) => GetDisplayStatus(side) switch
