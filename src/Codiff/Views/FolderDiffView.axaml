@@ -44,14 +44,15 @@
 									<Border Background="{Binding LeftStatusColor}"
 											Padding="2,1"
 											DoubleTapped="OnNodeDoubleTapped">
-										<Grid ColumnDefinitions="20,*">
-											<!-- Status icon -->
-											<TextBlock Grid.Column="0"
-													   Text="{Binding LeftStatusIcon}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="12"
-													   VerticalAlignment="Center"
-													   HorizontalAlignment="Center" />
+										<Grid ColumnDefinitions="24,*">
+											<!-- File system icon -->
+											<Image Grid.Column="0"
+												   Source="{Binding LeftIcon}"
+												   Width="16"
+												   Height="16"
+												   VerticalAlignment="Center"
+												   HorizontalAlignment="Center"
+												   Margin="2,0" />
 
 											<!-- Left name/path -->
 											<TextBlock Grid.Column="1"
@@ -59,7 +60,7 @@
 													   FontFamily="Consolas,Courier New,monospace"
 													   FontSize="11"
 													   VerticalAlignment="Center"
-                                Foreground="Black"
+                                    Foreground="Black"
 													   TextTrimming="CharacterEllipsis"
 													   ToolTip.Tip="{Binding LeftFullPath}" />
 										</Grid>
@@ -77,13 +78,13 @@
 							  ResizeDirection="Columns" />
 
 				<!-- Right side -->
-               <ScrollViewer x:Name="RightScrollViewer"
-                             Grid.Column="2"
-                             HorizontalScrollBarVisibility="Auto"
-                             VerticalScrollBarVisibility="Auto">
-                   <TreeView x:Name="RightTree"
-                             ItemsSource="{Binding RootNodes}"
-                             Background="White">
+                <ScrollViewer x:Name="RightScrollViewer"
+                              Grid.Column="2"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <TreeView x:Name="RightTree"
+                              ItemsSource="{Binding RootNodes}"
+                              Background="White">
 					<TreeView.ItemTemplate>
 						<DataTemplate x:DataType="vm:FolderNodeViewModel">
 							<TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
@@ -91,14 +92,15 @@
 									<Border Background="{Binding RightStatusColor}"
 											Padding="2,1"
 											DoubleTapped="OnNodeDoubleTapped">
-										<Grid ColumnDefinitions="20,*">
-											<!-- Status icon -->
-											<TextBlock Grid.Column="0"
-													   Text="{Binding RightStatusIcon}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="12"
-													   VerticalAlignment="Center"
-													   HorizontalAlignment="Center" />
+										<Grid ColumnDefinitions="24,*">
+											<!-- File system icon -->
+											<Image Grid.Column="0"
+												   Source="{Binding RightIcon}"
+												   Width="16"
+												   Height="16"
+												   VerticalAlignment="Center"
+												   HorizontalAlignment="Center"
+												   Margin="2,0" />
 
 											<!-- Right name/path -->
 											<TextBlock Grid.Column="1"
@@ -116,7 +118,7 @@
 						</DataTemplate>
 					</TreeView.ItemTemplate>
 				</TreeView>
-               </ScrollViewer>
+                </ScrollViewer>
 			</Grid>
 		</Grid>
     </DockPanel>

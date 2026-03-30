@@ -82,7 +82,7 @@ public partial class FolderDiffViewModel : ObservableObject
                     : currentPath + Path.DirectorySeparatorChar + parts[i];
 
                 bool isLeaf = i == parts.Length - 1;
-                bool isFile = isLeaf; // treat final segment as file
+                bool isFile = isLeaf && !string.IsNullOrEmpty(Path.GetExtension(parts[i]));
 
                 if (!nodeLookup.TryGetValue(currentPath, out var node))
                 {

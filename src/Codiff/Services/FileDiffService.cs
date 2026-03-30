@@ -5,10 +5,19 @@ using DiffPlex.DiffBuilder.Model;
 
 namespace Codiff.Services;
 
+/// <summary>
+/// Provides functionality to compare the contents of two files or text inputs and generate a detailed diff result.
+/// </summary>
+/// <remarks>The diff results produced by this service include line-by-line and hunk-level information, making it
+/// suitable for applications that need to display or process file differences. This class is not thread-safe; create a
+/// separate instance for each concurrent operation if needed.</remarks>
 public class FileDiffService
 {
+    #region Class members
     private readonly ISideBySideDiffBuilder _diffBuilder = new SideBySideDiffBuilder(new Differ());
+    #endregion // Class members
 
+    #region Public functions
     public FileDiffResult DiffFiles(string leftPath, string rightPath)
     {
         var leftText = File.ReadAllText(leftPath);
@@ -51,7 +60,9 @@ public class FileDiffService
             DiffHunkIndices = hunkIndices
         };
     }
+    #endregion // Public functions
 
+    #region Private functions
     private static DiffLine BuildDiffLine(DiffPiece? oldPiece, DiffPiece? newPiece)
     {
         if (oldPiece == null && newPiece == null)
@@ -117,4 +128,5 @@ public class FileDiffService
         }
         return spans;
     }
+    #endregion // Private functions
 }

@@ -2,8 +2,15 @@ using Codiff.Models;
 
 namespace Codiff.Services;
 
+/// <summary>
+/// Provides functionality to compare the contents of two folders and identify differences between their files.
+/// </summary>
+/// <remarks>This service determines which files are identical, modified, or present only in one of the specified
+/// folders. It is intended for scenarios where a detailed comparison of folder contents is required, such as
+/// synchronization or backup validation.</remarks>
 public class FolderDiffService
 {
+    #region Public functions
     public FolderDiffResult DiffFolders(string leftFolder, string rightFolder)
     {
         var entries = new List<FolderDiffEntry>();
@@ -52,7 +59,9 @@ public class FolderDiffService
             Entries = entries
         };
     }
+    #endregion // Public functions
 
+    #region Private functions
     private static Dictionary<string, string> GetRelativePaths(string folder)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -91,4 +100,5 @@ public class FolderDiffService
                 return false;
         }
     }
+    #endregion // Private functions
 }
