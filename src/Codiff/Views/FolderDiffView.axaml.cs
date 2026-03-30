@@ -1,6 +1,7 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Codiff.ViewModels;
 
@@ -8,6 +9,16 @@ namespace Codiff.Views;
 
 public partial class FolderDiffView : UserControl
 {
+    // DataGrid.ProcessVerticalScroll(ScrollEventType) is the private method that
+    // performs the full scroll pipeline: ScrollSlotIntoView + InvalidateRowsMeasure.
+    // It reads the target scrollbar's Value, so we must set that first.
+    // (DataGrid.SetVerticalOffset only stores _verticalOffset and updates the
+    //  scrollbar thumb — it does NOT move the virtualised rows.)
+    private static readonly MethodInfo? s_processVerticalScroll =
+        typeof(DataGrid).GetMethod("ProcessVerticalScroll",
+            BindingFlags.NonPublic | BindingFlags.Instance,
+            null, new[] { typeof(ScrollEventType) }, null);
+
     private bool _isSyncing;
     private FolderDiffViewModel? _subscribedViewModel;
 
@@ -15,6 +26,12 @@ public partial class FolderDiffView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+
+        if (s_processVerticalScroll == null)
+            System.Diagnostics.Debug.WriteLine(
+                "[FolderDiffView] WARNING: DataGrid.ProcessVerticalScroll not found. " +
+                "Vertical scroll synchronisation will be disabled. " +
+                "Check if the Avalonia.Controls.DataGrid package was updated.");
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -71,45 +88,54 @@ public partial class FolderDiffView : UserControl
                 args.Row.Background = node.RightStatusColor;
         };
 
-        // Vertical scroll synchronisation ────────────────────────────────────
-        ScrollViewer? leftSv = null;
-        ScrollViewer? rightSv = null;
+        // Vertical scroll synchronisation ─────────────────────────────────────
+        // DataGrid.ProcessVerticalScroll(ScrollEventType) is the actual scroll
+        // pipeline: it calls ScrollSlotIntoView + InvalidateRowsMeasure to move
+        // the virtualised rows.  It reads the current _vScrollBar.Value to
+        // determine the target row, so we must pre-set it before invoking.
+        //
+        // We detect the change via ValueChanged (fired when the DataGrid updates
+        // its own scrollbar after a user scroll), pre-set the target scrollbar's
+        // Value, then invoke ProcessVerticalScroll on the target grid.
+        //
+        // _isSyncing blocks the re-entrant ValueChanged fired by ProcessVerticalScroll
+        // when it internally updates the scrollbar.
+        ScrollBar? leftVSb = null;
+        ScrollBar? rightVSb = null;
 
         leftGrid.TemplateApplied += (_, args) =>
         {
-            leftSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
-            if (leftSv != null)
-                leftSv.ScrollChanged += (_, ev) =>
+            leftVSb = args.NameScope.Find<ScrollBar>("PART_VerticalScrollbar");
+            if (leftVSb != null)
+                leftVSb.ValueChanged += (_, _) =>
                 {
-                    if (_isSyncing || ev.OffsetDelta.Y == 0 || rightSv == null) return;
+                    if (_isSyncing || rightVSb == null) return;
                     _isSyncing = true;
                     try
                     {
-                        rightSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(rightSv.Offset.X, leftSv.Offset.Y));
+                        rightVSb.Value = leftVSb.Value;
+                        s_processVerticalScroll?.Invoke(rightGrid, new object[] { ScrollEventType.ThumbTrack });
                     }
-                    finally
-                    {
-                        _isSyncing = false;
-                    }
+                    catch (TargetInvocationException ex) { System.Diagnostics.Debug.WriteLine($"[FolderDiffView] Scroll sync (L→R) failed: {ex.InnerException ?? ex}"); }
+                    finally { _isSyncing = false; }
                 };
         };
 
         rightGrid.TemplateApplied += (_, args) =>
         {
-            rightSv = args.NameScope.Find<ScrollViewer>("PART_ScrollViewer");
-            if (rightSv != null)
-                rightSv.ScrollChanged += (_, ev) =>
+            rightVSb = args.NameScope.Find<ScrollBar>("PART_VerticalScrollbar");
+            if (rightVSb != null)
+                rightVSb.ValueChanged += (_, _) =>
                 {
-                    if (_isSyncing || ev.OffsetDelta.Y == 0 || leftSv == null) return;
+                    if (_isSyncing || leftVSb == null) return;
                     _isSyncing = true;
                     try
                     {
-                        leftSv.SetCurrentValue(ScrollViewer.OffsetProperty, new Vector(leftSv.Offset.X, rightSv.Offset.Y));
+                        leftVSb.Value = rightVSb.Value;
+                        s_processVerticalScroll?.Invoke(leftGrid, new object[] { ScrollEventType.ThumbTrack });
                     }
-                    finally
-                    {
-                        _isSyncing = false;
-                    }
+                    catch (TargetInvocationException ex) { System.Diagnostics.Debug.WriteLine($"[FolderDiffView] Scroll sync (R→L) failed: {ex.InnerException ?? ex}"); }
+                    finally { _isSyncing = false; }
                 };
         };
     }
