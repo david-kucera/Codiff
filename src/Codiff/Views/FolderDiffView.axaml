@@ -4,6 +4,13 @@
              x:Class="Codiff.Views.FolderDiffView"
              x:DataType="vm:FolderDiffViewModel">
 
+    <UserControl.Styles>
+        <!-- Make sortable column headers show a pointer cursor -->
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Styles>
+
     <DockPanel>
         <!-- Path labels -->
         <Grid DockPanel.Dock="Top"
