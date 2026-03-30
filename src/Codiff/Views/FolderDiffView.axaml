@@ -5,181 +5,321 @@
              x:DataType="vm:FolderDiffViewModel">
 
     <DockPanel>
-        <!-- Path labels & split tree: left and right sides -->
-		<Grid DockPanel.Dock="Top" RowDefinitions="Auto,*" ColumnDefinitions="*,4,*" Margin="4,4,4,0">
-			<!-- Left path label -->
-			<TextBlock Grid.Row="0" Grid.Column="0"
-					   Text="{Binding LeftFolderPath}"
-					   FontSize="16"
-					   Foreground="Blue"
-					   TextTrimming="CharacterEllipsis"
-					   ToolTip.Tip="{Binding LeftFolderPath}"
-					   Cursor="Hand"
-					   Tapped="OnLeftPathDoubleTapped" />
+        <!-- Path labels -->
+        <Grid DockPanel.Dock="Top"
+              ColumnDefinitions="*,4,*"
+              Margin="4,4,4,4">
+            <!-- Left path label -->
+            <Border Grid.Column="0"
+                    Background="#EEF2FB"
+                    BorderBrush="#AABBDD"
+                    BorderThickness="1"
+                    Padding="6,4">
+                <TextBlock Text="{Binding LeftFolderPath}"
+                           FontSize="13"
+                           Foreground="#0055AA"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding LeftFolderPath}"
+                           Cursor="Hand"
+                           Tapped="OnLeftPathDoubleTapped" />
+            </Border>
 
-			<!-- Right path label -->
-			<TextBlock Grid.Row="0" Grid.Column="2"
-					   Text="{Binding RightFolderPath}"
-					   FontSize="16"
-					   Foreground="Blue"
-					   TextTrimming="CharacterEllipsis"
-					   ToolTip.Tip="{Binding RightFolderPath}"
-					   Cursor="Hand"
-					   Tapped="OnRightPathDoubleTapped" />
+            <!-- Right path label -->
+            <Border Grid.Column="2"
+                    Background="#EEF2FB"
+                    BorderBrush="#AABBDD"
+                    BorderThickness="1"
+                    Padding="6,4">
+                <TextBlock Text="{Binding RightFolderPath}"
+                           FontSize="13"
+                           Foreground="#0055AA"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding RightFolderPath}"
+                           Cursor="Hand"
+                           Tapped="OnRightPathDoubleTapped" />
+            </Border>
+        </Grid>
 
-			<!-- Split tree: left and right sides -->
-          <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,4,*" Margin="0,4,0,0">
-				<!-- Left side -->
-               <ScrollViewer x:Name="LeftScrollViewer"
-                             Grid.Column="0"
-                             HorizontalScrollBarVisibility="Auto"
-                             VerticalScrollBarVisibility="Auto">
-                   <TreeView x:Name="LeftTree"
-                             ItemsSource="{Binding RootNodes}"
-                             Background="White">
-					<TreeView.ItemTemplate>
-						<DataTemplate x:DataType="vm:FolderNodeViewModel">
-							<TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-								<TreeViewItem.Header>
-									<Border Background="{Binding LeftStatusColor}"
-											Padding="2,1"
-											DoubleTapped="OnNodeDoubleTapped">
-										<Grid ColumnDefinitions="24,200,80,100,120">
-											<!-- File system icon -->
-											<Image Grid.Column="0"
-												   Source="{Binding LeftIcon}"
-												   Width="16"
-												   Height="16"
-												   VerticalAlignment="Center"
-												   HorizontalAlignment="Center"
-												   Margin="2,0" />
+        <!-- Legend -->
+        <Border DockPanel.Dock="Bottom"
+                Background="#F8F8F8"
+                BorderBrush="#CCCCCC"
+                BorderThickness="0,1,0,0"
+                Padding="8,4">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                    <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                    <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                    <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
-											<!-- Name column -->
-											<TextBlock Grid.Column="1"
-													   Text="{Binding LeftName}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-                                    Foreground="Black"
-													   TextTrimming="CharacterEllipsis"
-													   ToolTip.Tip="{Binding LeftFullPath}"
-													   Margin="4,0,4,0" />
+        <!-- Split panes: column headers + tree views -->
+        <Grid ColumnDefinitions="*,4,*"
+              Margin="4,0,4,4">
 
-											<!-- Size column -->
-											<TextBlock Grid.Column="2"
-													   Text="{Binding LeftSize}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   HorizontalAlignment="Right"
-													   Margin="4,0,4,0" />
+            <!-- Left pane -->
+            <DockPanel Grid.Column="0">
+                <!-- Left column headers -->
+                <Border DockPanel.Dock="Top"
+                        Background="#E8E8E8"
+                        BorderBrush="#AAAAAA"
+                        BorderThickness="1,1,1,0">
+                    <Grid ColumnDefinitions="24,200,80,100,120">
+                        <Border Grid.Column="0"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0" />
+                        <Border Grid.Column="1"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Name"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                        <Border Grid.Column="2"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Size"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333"
+                                       HorizontalAlignment="Right" />
+                        </Border>
+                        <Border Grid.Column="3"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Type"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                        <Border Grid.Column="4"
+                                Padding="4,3">
+                            <TextBlock Text="Time"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                    </Grid>
+                </Border>
 
-											<!-- Type column -->
-											<TextBlock Grid.Column="3"
-													   Text="{Binding LeftType}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   TextTrimming="CharacterEllipsis"
-													   Margin="4,0,4,0" />
+                <!-- Left tree -->
+                <Border BorderBrush="#AAAAAA"
+                        BorderThickness="1">
+                    <ScrollViewer x:Name="LeftScrollViewer"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <TreeView x:Name="LeftTree"
+                                  ItemsSource="{Binding RootNodes}"
+                                  Background="White">
+                            <TreeView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                    <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+                                        <TreeViewItem.Header>
+                                            <Border Background="{Binding LeftStatusColor}"
+                                                    Padding="2,1"
+                                                    DoubleTapped="OnNodeDoubleTapped">
+                                                <Grid ColumnDefinitions="24,200,80,100,120">
+                                                    <!-- File system icon -->
+                                                    <Image Grid.Column="0"
+                                                           Source="{Binding LeftIcon}"
+                                                           Width="16"
+                                                           Height="16"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="2,0" />
 
-											<!-- Time column -->
-											<TextBlock Grid.Column="4"
-													   Text="{Binding LeftTime}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   Margin="4,0,4,0" />
-										</Grid>
-									</Border>
-								</TreeViewItem.Header>
-							</TreeViewItem>
-						</DataTemplate>
-					</TreeView.ItemTemplate>
-				</TreeView>
-               </ScrollViewer>
+                                                    <!-- Name column -->
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding LeftName}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding LeftFullPath}"
+                                                               Margin="4,0,4,0" />
 
-				<!-- Vertical splitter -->
-				<GridSplitter Grid.Column="1"
-							  Background="#DDDDDD"
-							  ResizeDirection="Columns" />
+                                                    <!-- Size column -->
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding LeftSize}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               HorizontalAlignment="Right"
+                                                               Margin="4,0,4,0" />
 
-				<!-- Right side -->
-                <ScrollViewer x:Name="RightScrollViewer"
-                              Grid.Column="2"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
-                    <TreeView x:Name="RightTree"
-                              ItemsSource="{Binding RootNodes}"
-                              Background="White">
-					<TreeView.ItemTemplate>
-						<DataTemplate x:DataType="vm:FolderNodeViewModel">
-							<TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-								<TreeViewItem.Header>
-									<Border Background="{Binding RightStatusColor}"
-											Padding="2,1"
-											DoubleTapped="OnNodeDoubleTapped">
-										<Grid ColumnDefinitions="24,200,80,100,120">
-											<!-- File system icon -->
-											<Image Grid.Column="0"
-												   Source="{Binding RightIcon}"
-												   Width="16"
-												   Height="16"
-												   VerticalAlignment="Center"
-												   HorizontalAlignment="Center"
-												   Margin="2,0" />
+                                                    <!-- Type column -->
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="{Binding LeftType}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Margin="4,0,4,0" />
 
-											<!-- Name column -->
-											<TextBlock Grid.Column="1"
-													   Text="{Binding RightName}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   TextTrimming="CharacterEllipsis"
-													   ToolTip.Tip="{Binding RightFullPath}"
-													   Margin="4,0,4,0" />
+                                                    <!-- Time column -->
+                                                    <TextBlock Grid.Column="4"
+                                                               Text="{Binding LeftTime}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               Margin="4,0,4,0" />
+                                                </Grid>
+                                            </Border>
+                                        </TreeViewItem.Header>
+                                    </TreeViewItem>
+                                </DataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
 
-											<!-- Size column -->
-											<TextBlock Grid.Column="2"
-													   Text="{Binding RightSize}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   HorizontalAlignment="Right"
-													   Margin="4,0,4,0" />
+            <!-- Vertical splitter -->
+            <GridSplitter Grid.Column="1"
+                          Background="#DDDDDD"
+                          ResizeDirection="Columns" />
 
-											<!-- Type column -->
-											<TextBlock Grid.Column="3"
-													   Text="{Binding RightType}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   TextTrimming="CharacterEllipsis"
-													   Margin="4,0,4,0" />
+            <!-- Right pane -->
+            <DockPanel Grid.Column="2">
+                <!-- Right column headers -->
+                <Border DockPanel.Dock="Top"
+                        Background="#E8E8E8"
+                        BorderBrush="#AAAAAA"
+                        BorderThickness="1,1,1,0">
+                    <Grid ColumnDefinitions="24,200,80,100,120">
+                        <Border Grid.Column="0"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0" />
+                        <Border Grid.Column="1"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Name"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                        <Border Grid.Column="2"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Size"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333"
+                                       HorizontalAlignment="Right" />
+                        </Border>
+                        <Border Grid.Column="3"
+                                BorderBrush="#AAAAAA"
+                                BorderThickness="0,0,1,0"
+                                Padding="4,3">
+                            <TextBlock Text="Type"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                        <Border Grid.Column="4"
+                                Padding="4,3">
+                            <TextBlock Text="Time"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#333333" />
+                        </Border>
+                    </Grid>
+                </Border>
 
-											<!-- Time column -->
-											<TextBlock Grid.Column="4"
-													   Text="{Binding RightTime}"
-													   FontFamily="Consolas,Courier New,monospace"
-													   FontSize="11"
-													   VerticalAlignment="Center"
-													   Foreground="Black"
-													   Margin="4,0,4,0" />
-										</Grid>
-									</Border>
-								</TreeViewItem.Header>
-							</TreeViewItem>
-						</DataTemplate>
-					</TreeView.ItemTemplate>
-				</TreeView>
-                </ScrollViewer>
-			</Grid>
-		</Grid>
+                <!-- Right tree -->
+                <Border BorderBrush="#AAAAAA"
+                        BorderThickness="1">
+                    <ScrollViewer x:Name="RightScrollViewer"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <TreeView x:Name="RightTree"
+                                  ItemsSource="{Binding RootNodes}"
+                                  Background="White">
+                            <TreeView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FolderNodeViewModel">
+                                    <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+                                        <TreeViewItem.Header>
+                                            <Border Background="{Binding RightStatusColor}"
+                                                    Padding="2,1"
+                                                    DoubleTapped="OnNodeDoubleTapped">
+                                                <Grid ColumnDefinitions="24,200,80,100,120">
+                                                    <!-- File system icon -->
+                                                    <Image Grid.Column="0"
+                                                           Source="{Binding RightIcon}"
+                                                           Width="16"
+                                                           Height="16"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="2,0" />
+
+                                                    <!-- Name column -->
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding RightName}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding RightFullPath}"
+                                                               Margin="4,0,4,0" />
+
+                                                    <!-- Size column -->
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding RightSize}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               HorizontalAlignment="Right"
+                                                               Margin="4,0,4,0" />
+
+                                                    <!-- Type column -->
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="{Binding RightType}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Margin="4,0,4,0" />
+
+                                                    <!-- Time column -->
+                                                    <TextBlock Grid.Column="4"
+                                                               Text="{Binding RightTime}"
+                                                               FontFamily="Consolas,Courier New,monospace"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="Black"
+                                                               Margin="4,0,4,0" />
+                                                </Grid>
+                                            </Border>
+                                        </TreeViewItem.Header>
+                                    </TreeViewItem>
+                                </DataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+        </Grid>
     </DockPanel>
 </UserControl>
