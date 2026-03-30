@@ -75,6 +75,18 @@ public partial class FolderNodeViewModel : ObservableObject
     [ObservableProperty]
     private string _rightTime = "";
 
+    /// <summary>Raw byte count used for sorting by Size (<see langword="null"/> when not present on this side).</summary>
+    public long? LeftSizeBytes { get; private set; }
+
+    /// <summary>Raw byte count used for sorting by Size (<see langword="null"/> when not present on this side).</summary>
+    public long? RightSizeBytes { get; private set; }
+
+    /// <summary>Raw last-write timestamp used for sorting by Time (<see langword="null"/> when not present on this side).</summary>
+    public DateTime? LeftTimeRaw { get; private set; }
+
+    /// <summary>Raw last-write timestamp used for sorting by Time (<see langword="null"/> when not present on this side).</summary>
+    public DateTime? RightTimeRaw { get; private set; }
+
     public string LeftStatusIcon => GetStatusIcon(FolderSide.Left);
 
     public string RightStatusIcon => GetStatusIcon(FolderSide.Right);
@@ -187,21 +199,27 @@ public partial class FolderNodeViewModel : ObservableObject
                     if (IsFile && File.Exists(LeftFullPath))
                     {
                         var fileInfo = new FileInfo(LeftFullPath);
+                        var bytes = fileInfo.Length;
+                        var time = fileInfo.LastWriteTime;
+                        LeftSizeBytes = bytes;
+                        LeftTimeRaw = time;
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
-                            LeftSize = FormatSize(fileInfo.Length);
+                            LeftSize = FormatSize(bytes);
                             LeftType = GetFileType(LeftFullPath);
-                            LeftTime = fileInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                            LeftTime = time.ToString("dd-MMM-yy HH:mm:ss");
                         });
                     }
                     else if (!IsFile && Directory.Exists(LeftFullPath))
                     {
                         var dirInfo = new DirectoryInfo(LeftFullPath);
+                        var time = dirInfo.LastWriteTime;
+                        LeftTimeRaw = time;
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
                             LeftSize = "";
                             LeftType = "File folder";
-                            LeftTime = dirInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                            LeftTime = time.ToString("dd-MMM-yy HH:mm:ss");
                         });
                     }
                 }
@@ -215,21 +233,27 @@ public partial class FolderNodeViewModel : ObservableObject
                     if (IsFile && File.Exists(RightFullPath))
                     {
                         var fileInfo = new FileInfo(RightFullPath);
+                        var bytes = fileInfo.Length;
+                        var time = fileInfo.LastWriteTime;
+                        RightSizeBytes = bytes;
+                        RightTimeRaw = time;
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
-                            RightSize = FormatSize(fileInfo.Length);
+                            RightSize = FormatSize(bytes);
                             RightType = GetFileType(RightFullPath);
-                            RightTime = fileInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                            RightTime = time.ToString("dd-MMM-yy HH:mm:ss");
                         });
                     }
                     else if (!IsFile && Directory.Exists(RightFullPath))
                     {
                         var dirInfo = new DirectoryInfo(RightFullPath);
+                        var time = dirInfo.LastWriteTime;
+                        RightTimeRaw = time;
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
                             RightSize = "";
                             RightType = "File folder";
-                            RightTime = dirInfo.LastWriteTime.ToString("dd-MMM-yy HH:mm:ss");
+                            RightTime = time.ToString("dd-MMM-yy HH:mm:ss");
                         });
                     }
                 }

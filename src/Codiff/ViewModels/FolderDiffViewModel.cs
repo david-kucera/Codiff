@@ -7,6 +7,9 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Codiff.ViewModels;
 
+/// <summary>Column by which the folder-diff tree is currently sorted.</summary>
+public enum SortColumn { None, Name, Size, Type, Time }
+
 public partial class FolderDiffViewModel : ObservableObject
 {
     private readonly FolderDiffService _folderService = new();
@@ -37,6 +40,86 @@ public partial class FolderDiffViewModel : ObservableObject
     /// Expand/collapse actions rebuild this list in-place.
     /// </summary>
     public ObservableCollection<FolderNodeViewModel> FlatRows { get; } = [];
+
+    // ── Sort state ────────────────────────────────────────────────────────
+
+    /// <summary>Sort-direction indicator appended to the active column's header when ascending.</summary>
+    public const string AscendingIndicator  = " ↑";
+
+    /// <summary>Sort-direction indicator appended to the active column's header when descending.</summary>
+    public const string DescendingIndicator = " ↓";
+
+    private SortColumn _currentSortColumn = SortColumn.None;
+    private bool _sortAscending = true;
+
+    /// <summary>
+    /// Header text for the Name column, including the sort-direction arrow when active.
+    /// </summary>
+    public string NameSortHeader => BuildSortHeader("Name", SortColumn.Name);
+
+    /// <summary>
+    /// Header text for the Size column, including the sort-direction arrow when active.
+    /// </summary>
+    public string SizeSortHeader => BuildSortHeader("Size", SortColumn.Size);
+
+    /// <summary>
+    /// Header text for the Type column, including the sort-direction arrow when active.
+    /// </summary>
+    public string TypeSortHeader => BuildSortHeader("Type", SortColumn.Type);
+
+    /// <summary>
+    /// Header text for the Time column, including the sort-direction arrow when active.
+    /// </summary>
+    public string TimeSortHeader => BuildSortHeader("Time", SortColumn.Time);
+
+    private string BuildSortHeader(string name, SortColumn col)
+    {
+        if (_currentSortColumn != col) return name;
+        return _sortAscending ? name + AscendingIndicator : name + DescendingIndicator;
+    }
+
+    [RelayCommand]
+    private void SortByColumn(string? columnName)
+    {
+        if (string.IsNullOrEmpty(columnName)) return;
+
+        var col = columnName switch
+        {
+            "Name" => SortColumn.Name,
+            "Size" => SortColumn.Size,
+            "Type" => SortColumn.Type,
+            "Time" => SortColumn.Time,
+            _      => SortColumn.None
+        };
+
+        if (col == SortColumn.None) return;
+
+        if (_currentSortColumn == col)
+        {
+            // Cycle: Asc → Desc → None
+            if (_sortAscending)
+            {
+                _sortAscending = false;
+            }
+            else
+            {
+                _currentSortColumn = SortColumn.None;
+                _sortAscending = true;
+            }
+        }
+        else
+        {
+            _currentSortColumn = col;
+            _sortAscending = true;
+        }
+
+        OnPropertyChanged(nameof(NameSortHeader));
+        OnPropertyChanged(nameof(SizeSortHeader));
+        OnPropertyChanged(nameof(TypeSortHeader));
+        OnPropertyChanged(nameof(TimeSortHeader));
+
+        RebuildFlatRows();
+    }
 
     public bool IsVisible { get; set; }
 
@@ -218,7 +301,7 @@ public partial class FolderDiffViewModel : ObservableObject
     private void RebuildFlatRows()
     {
         FlatRows.Clear();
-        foreach (var root in RootNodes)
+        foreach (var root in ApplySort(RootNodes))
             AddNodeToFlatRows(root, depth: 0);
     }
 
@@ -229,9 +312,47 @@ public partial class FolderDiffViewModel : ObservableObject
 
         if (!node.IsFile && node.IsExpanded)
         {
-            foreach (var child in node.Children)
+            foreach (var child in ApplySort(node.Children))
                 AddNodeToFlatRows(child, depth + 1);
         }
+    }
+
+    /// <summary>
+    /// Returns <paramref name="nodes"/> in sorted order according to the current
+    /// sort column and direction, or in their original order when no sort is active.
+    /// </summary>
+    private IEnumerable<FolderNodeViewModel> ApplySort(IEnumerable<FolderNodeViewModel> nodes)
+    {
+        if (_currentSortColumn == SortColumn.None)
+            return nodes;
+
+        // Pick the sort key for the node; prefer the left side, fall back to right.
+        IOrderedEnumerable<FolderNodeViewModel> ordered = _currentSortColumn switch
+        {
+            SortColumn.Name => _sortAscending
+                ? nodes.OrderBy(n => n.LeftName, StringComparer.OrdinalIgnoreCase)
+                : nodes.OrderByDescending(n => n.LeftName, StringComparer.OrdinalIgnoreCase),
+
+            SortColumn.Size => _sortAscending
+                ? nodes.OrderBy(n => n.LeftSizeBytes ?? n.RightSizeBytes)
+                : nodes.OrderByDescending(n => n.LeftSizeBytes ?? n.RightSizeBytes),
+
+            SortColumn.Type => _sortAscending
+                ? nodes.OrderBy(
+                    n => string.IsNullOrEmpty(n.LeftType) ? n.RightType : n.LeftType,
+                    StringComparer.OrdinalIgnoreCase)
+                : nodes.OrderByDescending(
+                    n => string.IsNullOrEmpty(n.LeftType) ? n.RightType : n.LeftType,
+                    StringComparer.OrdinalIgnoreCase),
+
+            SortColumn.Time => _sortAscending
+                ? nodes.OrderBy(n => n.LeftTimeRaw ?? n.RightTimeRaw)
+                : nodes.OrderByDescending(n => n.LeftTimeRaw ?? n.RightTimeRaw),
+
+            _ => nodes.OrderBy(_ => 0)
+        };
+
+        return ordered;
     }
 
     private static IEnumerable<FolderNodeViewModel> GetAllNodes(IEnumerable<FolderNodeViewModel> nodes)

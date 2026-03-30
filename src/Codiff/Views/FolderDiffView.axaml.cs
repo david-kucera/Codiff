@@ -3,7 +3,9 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Codiff.ViewModels;
 
 namespace Codiff.Views;
@@ -76,6 +78,15 @@ public partial class FolderDiffView : UserControl
     {
         if (e.PropertyName == nameof(FolderDiffViewModel.IsStatsVisible))
             UpdateStatsRowHeight();
+
+        if (e.PropertyName is nameof(FolderDiffViewModel.NameSortHeader)
+                           or nameof(FolderDiffViewModel.SizeSortHeader)
+                           or nameof(FolderDiffViewModel.TypeSortHeader)
+                           or nameof(FolderDiffViewModel.TimeSortHeader))
+        {
+            if (_subscribedViewModel != null)
+                ApplySortHeaders(_subscribedViewModel);
+        }
     }
 
     /// <summary>
@@ -92,6 +103,59 @@ public partial class FolderDiffView : UserControl
         grid.RowDefinitions[2].Height = visible ? new GridLength(100) : new GridLength(0);
     }
 
+    // ── Sort-header text ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Updates the DataGrid column header strings to reflect the current sort
+    /// column and direction (e.g. "Name ↑").
+    /// </summary>
+    private void ApplySortHeaders(FolderDiffViewModel vm)
+    {
+        // Column order: 0 = expand/collapse, 1 = Name, 2 = Size, 3 = Type, 4 = Time
+        foreach (var grid in new[] { LeftDataGrid, RightDataGrid })
+        {
+            if (grid.Columns.Count < 5) continue;
+            grid.Columns[1].Header = vm.NameSortHeader;
+            grid.Columns[2].Header = vm.SizeSortHeader;
+            grid.Columns[3].Header = vm.TypeSortHeader;
+            grid.Columns[4].Header = vm.TimeSortHeader;
+        }
+    }
+
+    // ── Column-header click → sort ─────────────────────────────────────────
+
+    private void OnDataGridPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is not FolderDiffViewModel vm) return;
+        if (sender is not DataGrid grid) return;
+        if (e.Source is not Visual source) return;
+
+        // If the click is inside a data cell/row it is NOT a header click.
+        if (source.FindAncestorOfType<DataGridCell>(includeSelf: true) != null) return;
+        if (source.FindAncestorOfType<DataGridRow>(includeSelf: true)  != null) return;
+
+        // Must be inside a column header.
+        if (source.FindAncestorOfType<DataGridColumnHeader>(includeSelf: true) == null) return;
+
+        // Use the pointer X-position to identify the clicked column.
+        var pt = e.GetPosition(grid);
+        double accumulated = 0;
+        for (int i = 0; i < grid.Columns.Count; i++)
+        {
+            accumulated += grid.Columns[i].ActualWidth;
+            if (pt.X < accumulated)
+            {
+                // Strip any existing sort indicator to get the base column name.
+                var columnName = grid.Columns[i].Header?.ToString()
+                    ?.Replace(FolderDiffViewModel.AscendingIndicator,  "")
+                    .Replace(FolderDiffViewModel.DescendingIndicator, "")
+                    .Trim();
+                vm.SortByColumnCommand.Execute(columnName);
+                return;
+            }
+        }
+    }
+
     // ── Grid wiring (row colours + scroll sync) ─────────────────────────────
 
     private void SetupGrids()
@@ -99,6 +163,10 @@ public partial class FolderDiffView : UserControl
         var leftGrid = this.FindControl<DataGrid>("LeftDataGrid");
         var rightGrid = this.FindControl<DataGrid>("RightDataGrid");
         if (leftGrid == null || rightGrid == null) return;
+
+        // Column-header sort clicks ──────────────────────────────────────────
+        leftGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
+        rightGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
 
         // Per-row background colours ─────────────────────────────────────────
         leftGrid.LoadingRow += (_, args) =>
