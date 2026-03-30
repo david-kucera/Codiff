@@ -17,6 +17,9 @@ public class DiffMapControl : Control
     public static readonly StyledProperty<ScrollViewer?> TargetScrollViewerProperty =
         AvaloniaProperty.Register<DiffMapControl, ScrollViewer?>(nameof(TargetScrollViewer));
 
+    public static readonly StyledProperty<bool> IsLeftSideProperty =
+        AvaloniaProperty.Register<DiffMapControl, bool>(nameof(IsLeftSide), true);
+
     private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#CCAA00"));
     private static readonly IBrush AddedBrush = new SolidColorBrush(Color.Parse("#22AA22"));
     private static readonly IBrush DeletedBrush = new SolidColorBrush(Color.Parse("#DD4444"));
@@ -36,9 +39,16 @@ public class DiffMapControl : Control
         set => SetValue(TargetScrollViewerProperty, value);
     }
 
+    public bool IsLeftSide
+    {
+        get => GetValue(IsLeftSideProperty);
+        set => SetValue(IsLeftSideProperty, value);
+    }
+
     static DiffMapControl()
     {
         AffectsRender<DiffMapControl>(LinesProperty);
+        AffectsRender<DiffMapControl>(IsLeftSideProperty);
     }
 
     public DiffMapControl()
@@ -141,8 +151,8 @@ public class DiffMapControl : Control
             IBrush brush = lineType switch
             {
                 LineType.Modified => ModifiedBrush,
-                LineType.Added => AddedBrush,
-                LineType.Deleted => DeletedBrush,
+                LineType.Added => IsLeftSide ? DeletedBrush : AddedBrush,
+                LineType.Deleted => IsLeftSide ? AddedBrush : DeletedBrush,
                 _ => Brushes.Transparent
             };
 

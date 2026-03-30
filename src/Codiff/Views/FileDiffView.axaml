@@ -104,7 +104,8 @@
                 </ScrollViewer>
                 <controls:DiffMapControl x:Name="LeftDiffMap"
                                          Grid.Column="1"
-                                         Lines="{Binding Lines}" />
+                                         Lines="{Binding Lines}"
+                                         IsLeftSide="True" />
             </Grid>
 
             <!-- Vertical splitter -->
@@ -156,7 +157,8 @@
                 </ScrollViewer>
                 <controls:DiffMapControl x:Name="RightDiffMap"
                                          Grid.Column="1"
-                                         Lines="{Binding Lines}" />
+                                         Lines="{Binding Lines}"
+                                         IsLeftSide="False" />
             </Grid>
         </Grid>
     </Grid>
