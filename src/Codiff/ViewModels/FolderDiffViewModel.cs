@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using Avalonia.Controls;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -39,6 +40,72 @@ public partial class FolderDiffViewModel : ObservableObject
 
     public bool IsVisible { get; set; }
 
+    // ── Statistics ────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TotalCount))]
+    [NotifyPropertyChangedFor(nameof(IdenticalPercent))]
+    [NotifyPropertyChangedFor(nameof(OneSidePercent))]
+    [NotifyPropertyChangedFor(nameof(ModifiedPercent))]
+    [NotifyPropertyChangedFor(nameof(IdenticalLabel))]
+    [NotifyPropertyChangedFor(nameof(OneSideLabel))]
+    [NotifyPropertyChangedFor(nameof(ModifiedLabel))]
+    [NotifyPropertyChangedFor(nameof(IdenticalBarStar))]
+    [NotifyPropertyChangedFor(nameof(OneSideBarStar))]
+    [NotifyPropertyChangedFor(nameof(ModifiedBarStar))]
+    private int _identicalCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TotalCount))]
+    [NotifyPropertyChangedFor(nameof(IdenticalPercent))]
+    [NotifyPropertyChangedFor(nameof(OneSidePercent))]
+    [NotifyPropertyChangedFor(nameof(ModifiedPercent))]
+    [NotifyPropertyChangedFor(nameof(IdenticalLabel))]
+    [NotifyPropertyChangedFor(nameof(OneSideLabel))]
+    [NotifyPropertyChangedFor(nameof(ModifiedLabel))]
+    [NotifyPropertyChangedFor(nameof(IdenticalBarStar))]
+    [NotifyPropertyChangedFor(nameof(OneSideBarStar))]
+    [NotifyPropertyChangedFor(nameof(ModifiedBarStar))]
+    private int _oneSideCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TotalCount))]
+    [NotifyPropertyChangedFor(nameof(IdenticalPercent))]
+    [NotifyPropertyChangedFor(nameof(OneSidePercent))]
+    [NotifyPropertyChangedFor(nameof(ModifiedPercent))]
+    [NotifyPropertyChangedFor(nameof(IdenticalLabel))]
+    [NotifyPropertyChangedFor(nameof(OneSideLabel))]
+    [NotifyPropertyChangedFor(nameof(ModifiedLabel))]
+    [NotifyPropertyChangedFor(nameof(IdenticalBarStar))]
+    [NotifyPropertyChangedFor(nameof(OneSideBarStar))]
+    [NotifyPropertyChangedFor(nameof(ModifiedBarStar))]
+    private int _modifiedCount;
+
+    [ObservableProperty]
+    private bool _isStatsVisible;
+
+    public int TotalCount => IdenticalCount + OneSideCount + ModifiedCount;
+
+    public string IdenticalPercent => TotalCount > 0 ? $"{100.0 * IdenticalCount / TotalCount:0.0}%" : "0.0%";
+    public string OneSidePercent  => TotalCount > 0 ? $"{100.0 * OneSideCount  / TotalCount:0.0}%" : "0.0%";
+    public string ModifiedPercent => TotalCount > 0 ? $"{100.0 * ModifiedCount / TotalCount:0.0}%" : "0.0%";
+
+    public string IdenticalLabel => $"Identical: {IdenticalCount} ({IdenticalPercent})";
+    public string OneSideLabel   => $"One side only: {OneSideCount} ({OneSidePercent})";
+    public string ModifiedLabel  => $"Modified: {ModifiedCount} ({ModifiedPercent})";
+
+    /// <summary>Star-width for the identical (black) segment of the stacked bar.</summary>
+    public GridLength IdenticalBarStar => new GridLength(IdenticalCount, GridUnitType.Star);
+    /// <summary>Star-width for the one-side-only (green) segment.</summary>
+    public GridLength OneSideBarStar   => new GridLength(OneSideCount,   GridUnitType.Star);
+    /// <summary>Star-width for the modified (yellow) segment.</summary>
+    public GridLength ModifiedBarStar  => new GridLength(ModifiedCount,  GridUnitType.Star);
+
+    [RelayCommand]
+    private void CloseStats() => IsStatsVisible = false;
+
+    // ─────────────────────────────────────────────────────────────────────
+
     public event Action<string, string>? FileEntrySelected;
 
     // Raised when a folder node is activated so the view can synchronize
@@ -55,6 +122,13 @@ public partial class FolderDiffViewModel : ObservableObject
         Entries.Clear();
         foreach (var entry in result.Entries)
             Entries.Add(new FolderEntryViewModel(entry));
+
+        // Compute summary statistics
+        IdenticalCount = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.Identical);
+        OneSideCount   = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.OnlyInLeft
+                                                || e.Status == Codiff.Models.FileStatus.OnlyInRight);
+        ModifiedCount  = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.Modified);
+        IsStatsVisible = result.Entries.Count > 0;
 
         BuildTree(result);
     }

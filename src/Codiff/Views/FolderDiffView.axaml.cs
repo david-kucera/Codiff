@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
@@ -56,6 +57,7 @@ public partial class FolderDiffView : UserControl
         {
             _subscribedViewModel.FolderOpened -= OnFolderOpened;
             _subscribedViewModel.FileEntrySelected -= OnFileEntrySelected;
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
 
         _subscribedViewModel = DataContext as FolderDiffViewModel;
@@ -64,7 +66,30 @@ public partial class FolderDiffView : UserControl
         {
             _subscribedViewModel.FolderOpened += OnFolderOpened;
             _subscribedViewModel.FileEntrySelected += OnFileEntrySelected;
+            _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
+
+        UpdateStatsRowHeight();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FolderDiffViewModel.IsStatsVisible))
+            UpdateStatsRowHeight();
+    }
+
+    /// <summary>
+    /// Collapses or restores Row 1 (splitter) and Row 2 (stats panel) of
+    /// MainContentGrid based on the view-model's IsStatsVisible flag.
+    /// </summary>
+    private void UpdateStatsRowHeight()
+    {
+        var grid = this.FindControl<Grid>("MainContentGrid");
+        if (grid == null) return;
+
+        bool visible = (_subscribedViewModel?.IsStatsVisible) ?? false;
+        grid.RowDefinitions[1].Height = visible ? new GridLength(5) : new GridLength(0);
+        grid.RowDefinitions[2].Height = visible ? new GridLength(100) : new GridLength(0);
     }
 
     // ── Grid wiring (row colours + scroll sync) ─────────────────────────────
