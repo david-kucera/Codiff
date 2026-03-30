@@ -71,7 +71,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding Background}"
+                                      Background="{Binding LeftBackground}"
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"
@@ -104,7 +104,8 @@
                 </ScrollViewer>
                 <controls:DiffMapControl x:Name="LeftDiffMap"
                                          Grid.Column="1"
-                                         Lines="{Binding Lines}" />
+                                         Lines="{Binding Lines}"
+                                         IsLeftSide="True" />
             </Grid>
 
             <!-- Vertical splitter -->
@@ -123,7 +124,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding Background}"
+                                      Background="{Binding RightBackground}"
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"
@@ -156,7 +157,8 @@
                 </ScrollViewer>
                 <controls:DiffMapControl x:Name="RightDiffMap"
                                          Grid.Column="1"
-                                         Lines="{Binding Lines}" />
+                                         Lines="{Binding Lines}"
+                                         IsLeftSide="False" />
             </Grid>
         </Grid>
     </Grid>
