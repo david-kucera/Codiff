@@ -27,7 +27,12 @@
         </Border>
 
         <Grid>
-            <views:FolderDiffView DataContext="{Binding FolderDiffViewModel}" />
+            <Panel IsVisible="{Binding !IsFolderViewVisible}">
+                <views:FileDiffView DataContext="{Binding FileDiffViewModel}" />
+            </Panel>
+            <Panel IsVisible="{Binding IsFolderViewVisible}">
+                <views:FolderDiffView DataContext="{Binding FolderDiffViewModel}" />
+            </Panel>
         </Grid>
     </DockPanel>
 </Window>
