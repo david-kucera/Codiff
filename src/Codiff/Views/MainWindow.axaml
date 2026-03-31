@@ -44,6 +44,11 @@
                 <MenuItem Header="Show Both Directories"
                           Command="{Binding FolderDiffViewModel.ShowBothDirectoriesCommand}" />
                 <Separator />
+                <MenuItem Header="Expand All"
+                          Command="{Binding FolderDiffViewModel.ExpandAllCommand}" />
+                <MenuItem Header="Collapse All"
+                          Command="{Binding FolderDiffViewModel.CollapseAllCommand}" />
+                <Separator />
                 <MenuItem Header="{Binding ThemeMenuHeader}"
                           Command="{Binding ToggleThemeCommand}" />
             </MenuItem>
