@@ -69,6 +69,21 @@
                     <Color x:Key="DiffMissingColor">#3A0000</Color>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <!-- Menu icons -->
+            <StreamGeometry x:Key="IconNewComparison">M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z</StreamGeometry>
+            <StreamGeometry x:Key="IconRecompare">M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z</StreamGeometry>
+            <StreamGeometry x:Key="IconSwapDirectories">M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z</StreamGeometry>
+            <StreamGeometry x:Key="IconUpOneLevel">M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z</StreamGeometry>
+            <StreamGeometry x:Key="IconExit">M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41 2.58 2.59H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z</StreamGeometry>
+            <StreamGeometry x:Key="IconCopyToClipboard">M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z</StreamGeometry>
+            <StreamGeometry x:Key="IconDelete">M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</StreamGeometry>
+            <StreamGeometry x:Key="IconDeleteFromBoth">M15 16h4v2h-4v-2zm0-8h7v2h-7V8zm0 4h6v2h-6v-4zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12V5z</StreamGeometry>
+            <StreamGeometry x:Key="IconShowOnlyFirst">M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2V9h-2V7h4v10z</StreamGeometry>
+            <StreamGeometry x:Key="IconShowOnlySecond">M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8c0 1.11-.9 2-2 2h-2v2h4v2H9v-4c0-1.11.9-2 2-2h2V9H9V7h4c1.1 0 2 .89 2 2v2z</StreamGeometry>
+            <StreamGeometry x:Key="IconShowBoth">M10 18h5V5h-5v13zm-6 0h5V5H4v13zM16 5v13h4V5h-4z</StreamGeometry>
+            <StreamGeometry x:Key="IconExpandAll">M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z</StreamGeometry>
+            <StreamGeometry x:Key="IconCollapseAll">M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z</StreamGeometry>
+            <StreamGeometry x:Key="IconThemeToggle">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18V4c4.41 0 8 3.59 8 8s-3.59 8-8 8z</StreamGeometry>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

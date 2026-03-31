@@ -15,42 +15,98 @@
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Directories">
                 <MenuItem Header="New Comparison"
-                          Command="{Binding OpenFoldersCommand}" />
+                          Command="{Binding OpenFoldersCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconNewComparison}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Re-compare"
-                          Command="{Binding FolderDiffViewModel.RecompareCommand}" />
+                          Command="{Binding FolderDiffViewModel.RecompareCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconRecompare}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Swap Directories"
-                          Command="{Binding FolderDiffViewModel.SwapDirectoriesCommand}" />
+                          Command="{Binding FolderDiffViewModel.SwapDirectoriesCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconSwapDirectories}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Up One Level for Both"
-                          Command="{Binding FolderDiffViewModel.UpOneLevelCommand}" />
+                          Command="{Binding FolderDiffViewModel.UpOneLevelCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconUpOneLevel}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Exit"
-                          Command="{Binding ExitCommand}" />
+                          Command="{Binding ExitCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconExit}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="Edit">
                 <MenuItem Header="Copy to Clipboard"
-                          Command="{Binding FolderDiffViewModel.CopyToClipboardCommand}" />
+                          Command="{Binding FolderDiffViewModel.CopyToClipboardCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCopyToClipboard}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Delete"
-                          Command="{Binding FolderDiffViewModel.DeleteCommand}" />
+                          Command="{Binding FolderDiffViewModel.DeleteCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconDelete}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Delete from Both Sides"
-                          Command="{Binding FolderDiffViewModel.DeleteFromBothCommand}" />
+                          Command="{Binding FolderDiffViewModel.DeleteFromBothCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconDeleteFromBoth}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="View">
                 <MenuItem Header="Show Only First Directory"
-                          Command="{Binding FolderDiffViewModel.ShowOnlyFirstDirectoryCommand}" />
+                          Command="{Binding FolderDiffViewModel.ShowOnlyFirstDirectoryCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconShowOnlyFirst}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Show Only Second Directory"
-                          Command="{Binding FolderDiffViewModel.ShowOnlySecondDirectoryCommand}" />
+                          Command="{Binding FolderDiffViewModel.ShowOnlySecondDirectoryCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconShowOnlySecond}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Show Both Directories"
-                          Command="{Binding FolderDiffViewModel.ShowBothDirectoriesCommand}" />
+                          Command="{Binding FolderDiffViewModel.ShowBothDirectoriesCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconShowBoth}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Expand All"
-                          Command="{Binding FolderDiffViewModel.ExpandAllCommand}" />
+                          Command="{Binding FolderDiffViewModel.ExpandAllCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconExpandAll}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Collapse All"
-                          Command="{Binding FolderDiffViewModel.CollapseAllCommand}" />
+                          Command="{Binding FolderDiffViewModel.CollapseAllCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCollapseAll}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="{Binding ThemeMenuHeader}"
-                          Command="{Binding ToggleThemeCommand}" />
+                          Command="{Binding ToggleThemeCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconThemeToggle}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 
