@@ -7,13 +7,13 @@ namespace Codiff.Services;
 /// <summary>
 /// Provides functionality to extract and cache file and folder icons from the Windows operating system.
 /// </summary>
-/// <remarks>This class is intended for use on Windows platforms and is not supported on other operating systems.
+/// <remarks>This class is intended for use on Windows platforms only.
 /// It implements a singleton pattern accessible via the Instance property. Icons are cached to improve performance and
 /// reduce redundant extraction operations. All extracted icons are returned as Bitmap objects. Callers should dispose
 /// of any returned Bitmap when it is no longer needed. Use the ClearCache method to release all cached icons and free
 /// associated resources.</remarks>
 [SupportedOSPlatform("windows")]
-public class IconExtractorService
+public class WindowsIconExtractorService : IIconExtractorService
 {
     #region Constants
     private const string DefaultFolderIconKey = "folder";
@@ -45,13 +45,13 @@ public class IconExtractorService
     #endregion // Constants
 
     #region Class members
-    private static IconExtractorService? _instance;
+    private static WindowsIconExtractorService? _instance;
     private static readonly object _lock = new();
     private static readonly Dictionary<string, Bitmap?> IconCache = new();
     #endregion // Class members
 
     #region Public functions
-    public static IconExtractorService Instance
+    public static WindowsIconExtractorService Instance
     {
         get
         {
@@ -59,7 +59,7 @@ public class IconExtractorService
             {
                 lock (_lock)
                 {
-                    _instance ??= new IconExtractorService();
+                    _instance ??= new WindowsIconExtractorService();
                 }
             }
             return _instance;
@@ -68,9 +68,6 @@ public class IconExtractorService
 
     public Bitmap? GetFileIcon(string filePath)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return null;
-
         try
         {
             var cacheKey = GetCacheKey(filePath, isDirectory: false);
@@ -89,9 +86,6 @@ public class IconExtractorService
 
     public Bitmap? GetFolderIcon(string folderPath)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return null;
-
         try
         {
             var cacheKey = DefaultFolderIconKey;
