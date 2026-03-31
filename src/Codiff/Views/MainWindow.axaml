@@ -11,6 +11,41 @@
         MinHeight="500">
 
     <DockPanel>
+        <!-- Menu bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="Directories">
+                <MenuItem Header="New Comparison"
+                          Command="{Binding OpenFoldersCommand}" />
+                <MenuItem Header="Re-compare"
+                          Command="{Binding FolderDiffViewModel.RecompareCommand}" />
+                <Separator />
+                <MenuItem Header="Swap Directories"
+                          Command="{Binding FolderDiffViewModel.SwapDirectoriesCommand}" />
+                <MenuItem Header="Up One Level for Both"
+                          Command="{Binding FolderDiffViewModel.UpOneLevelCommand}" />
+                <Separator />
+                <MenuItem Header="Exit"
+                          Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="Edit">
+                <MenuItem Header="Copy to Clipboard"
+                          Command="{Binding FolderDiffViewModel.CopyToClipboardCommand}" />
+                <Separator />
+                <MenuItem Header="Delete"
+                          Command="{Binding FolderDiffViewModel.DeleteCommand}" />
+                <MenuItem Header="Delete from Both Sides"
+                          Command="{Binding FolderDiffViewModel.DeleteFromBothCommand}" />
+            </MenuItem>
+            <MenuItem Header="View">
+                <MenuItem Header="Show Only First Directory"
+                          Command="{Binding FolderDiffViewModel.ShowOnlyFirstDirectoryCommand}" />
+                <MenuItem Header="Show Only Second Directory"
+                          Command="{Binding FolderDiffViewModel.ShowOnlySecondDirectoryCommand}" />
+                <MenuItem Header="Show Both Directories"
+                          Command="{Binding FolderDiffViewModel.ShowBothDirectoriesCommand}" />
+            </MenuItem>
+        </Menu>
+
         <Border DockPanel.Dock="Top"
                 Background="#F0F0F0"
                 BorderBrush="#CCCCCC"
