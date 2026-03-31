@@ -14,6 +14,7 @@
     <DockPanel>
         <!-- Path labels -->
         <Grid DockPanel.Dock="Top"
+              x:Name="PathLabelsGrid"
               ColumnDefinitions="*,4,*"
               Margin="4,4,4,4">
             <!-- Left path label -->
@@ -90,12 +91,14 @@
 
             <!-- Row 0: left and right DataGrids -->
             <Grid Grid.Row="0"
+                  x:Name="DataGridsPanel"
                   ColumnDefinitions="*,4,*">
 
                 <!-- Left DataGrid -->
             <DataGrid x:Name="LeftDataGrid"
                       Grid.Column="0"
                       ItemsSource="{Binding FlatRows}"
+                      SelectedItem="{Binding SelectedNode}"
                       AutoGenerateColumns="False"
                       CanUserResizeColumns="True"
                       CanUserSortColumns="False"
@@ -204,6 +207,7 @@
             <DataGrid x:Name="RightDataGrid"
                       Grid.Column="2"
                       ItemsSource="{Binding FlatRows}"
+                      SelectedItem="{Binding SelectedNode}"
                       AutoGenerateColumns="False"
                       CanUserResizeColumns="True"
                       CanUserSortColumns="False"

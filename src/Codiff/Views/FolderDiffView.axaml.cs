@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Codiff.ViewModels;
 
@@ -60,6 +62,9 @@ public partial class FolderDiffView : UserControl
             _subscribedViewModel.FolderOpened -= OnFolderOpened;
             _subscribedViewModel.FileEntrySelected -= OnFileEntrySelected;
             _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.CopyToClipboardRequested -= OnCopyToClipboardRequested;
+            _subscribedViewModel.DeleteErrorOccurred -= OnDeleteErrorOccurred;
+            _subscribedViewModel.ConfirmDeleteAsync = null;
         }
 
         _subscribedViewModel = DataContext as FolderDiffViewModel;
@@ -69,9 +74,13 @@ public partial class FolderDiffView : UserControl
             _subscribedViewModel.FolderOpened += OnFolderOpened;
             _subscribedViewModel.FileEntrySelected += OnFileEntrySelected;
             _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            _subscribedViewModel.CopyToClipboardRequested += OnCopyToClipboardRequested;
+            _subscribedViewModel.DeleteErrorOccurred += OnDeleteErrorOccurred;
+            _subscribedViewModel.ConfirmDeleteAsync = ShowConfirmDialogAsync;
         }
 
         UpdateStatsRowHeight();
+        UpdateViewMode();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -87,6 +96,9 @@ public partial class FolderDiffView : UserControl
             if (_subscribedViewModel != null)
                 ApplySortHeaders(_subscribedViewModel);
         }
+
+        if (e.PropertyName == nameof(FolderDiffViewModel.CurrentViewMode))
+            UpdateViewMode();
     }
 
     /// <summary>
@@ -164,6 +176,10 @@ public partial class FolderDiffView : UserControl
         var rightGrid = this.FindControl<DataGrid>("RightDataGrid");
         if (leftGrid == null || rightGrid == null) return;
 
+        // Track which side was last interacted with ──────────────────────────
+        leftGrid.PointerPressed  += (_, _) => { if (_subscribedViewModel != null) _subscribedViewModel.SelectedSide = FolderSide.Left; };
+        rightGrid.PointerPressed += (_, _) => { if (_subscribedViewModel != null) _subscribedViewModel.SelectedSide = FolderSide.Right; };
+
         // Column-header sort clicks ──────────────────────────────────────────
         leftGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
         rightGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
@@ -231,6 +247,135 @@ public partial class FolderDiffView : UserControl
                     finally { _isSyncing = false; }
                 };
         };
+    }
+
+    // ── View mode ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Updates column widths on the path-labels grid and the DataGrids panel
+    /// to show only the selected directory side (or both).
+    /// </summary>
+    private void UpdateViewMode()
+    {
+        var mode = _subscribedViewModel?.CurrentViewMode ?? ViewMode.Both;
+        var pathLabelsGrid = this.FindControl<Grid>("PathLabelsGrid");
+        var dataGridsPanel = this.FindControl<Grid>("DataGridsPanel");
+
+        UpdateTwoSideGrid(pathLabelsGrid, mode);
+        UpdateTwoSideGrid(dataGridsPanel, mode);
+    }
+
+    private static void UpdateTwoSideGrid(Grid? grid, ViewMode mode)
+    {
+        if (grid == null || grid.ColumnDefinitions.Count < 3) return;
+
+        switch (mode)
+        {
+            case ViewMode.Both:
+                grid.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+                grid.ColumnDefinitions[1].Width = new GridLength(4);
+                grid.ColumnDefinitions[2].Width = new GridLength(1, GridUnitType.Star);
+                break;
+            case ViewMode.OnlyLeft:
+                grid.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+                grid.ColumnDefinitions[1].Width = new GridLength(0);
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+                break;
+            case ViewMode.OnlyRight:
+                grid.ColumnDefinitions[0].Width = new GridLength(0);
+                grid.ColumnDefinitions[1].Width = new GridLength(0);
+                grid.ColumnDefinitions[2].Width = new GridLength(1, GridUnitType.Star);
+                break;
+        }
+    }
+
+    // ── Clipboard ──────────────────────────────────────────────────────────
+
+    private async void OnCopyToClipboardRequested(string text)
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(text);
+    }
+
+    // ── Error notification ─────────────────────────────────────────────────
+
+    private async void OnDeleteErrorOccurred(string message)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner == null) return;
+
+        var okBtn = new Button { Content = "OK", MinWidth = 80, HorizontalAlignment = HorizontalAlignment.Center };
+
+        var dialog = new Window
+        {
+            Title  = "Delete Error",
+            Width  = 420,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            Content = new StackPanel
+            {
+                Margin  = new Thickness(16),
+                Spacing = 16,
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 380 },
+                    okBtn
+                }
+            }
+        };
+
+        okBtn.Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
+    }
+
+    // ── Confirm dialog ─────────────────────────────────────────────────────
+
+    private async Task<bool> ShowConfirmDialogAsync(string message)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner == null) return false;
+
+        var result = false;
+
+        var yesBtn = new Button { Content = "Delete", MinWidth = 80 };
+        var noBtn  = new Button { Content = "Cancel",  MinWidth = 80 };
+
+        var dialog = new Window
+        {
+            Title  = "Confirm Delete",
+            Width  = 420,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            Content = new StackPanel
+            {
+                Margin  = new Thickness(16),
+                Spacing = 16,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text        = message,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth    = 380
+                    },
+                    new StackPanel
+                    {
+                        Orientation       = Orientation.Horizontal,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Spacing           = 8,
+                        Children          = { yesBtn, noBtn }
+                    }
+                }
+            }
+        };
+
+        yesBtn.Click += (_, _) => { result = true; dialog.Close(); };
+        noBtn.Click  += (_, _) => dialog.Close();
+
+        await dialog.ShowDialog(owner);
+        return result;
     }
 
     // ── Double-click → open file diff ──────────────────────────────────────

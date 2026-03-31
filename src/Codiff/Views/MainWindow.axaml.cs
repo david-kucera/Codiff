@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         {
             vm.OpenFilesDialog = OpenFilesDialogAsync;
             vm.OpenFoldersDialog = OpenFoldersDialogAsync;
+            vm.ExitApplication = Close;
         }
     }
 

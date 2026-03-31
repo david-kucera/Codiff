@@ -16,11 +16,15 @@ public partial class MainWindowViewModel : ObservableObject
 
     public Func<Task<(string? left, string? right)>>? OpenFilesDialog;
     public Func<Task<(string? left, string? right)>>? OpenFoldersDialog;
+    public Action? ExitApplication;
 
     public MainWindowViewModel()
     {
         FolderDiffViewModel.FileEntrySelected += OnFileEntrySelected;
     }
+
+    [RelayCommand]
+    private void Exit() => ExitApplication?.Invoke();
 
     [RelayCommand]
     private async Task OpenFiles()
