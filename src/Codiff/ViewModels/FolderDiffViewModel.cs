@@ -149,6 +149,48 @@ public partial class FolderDiffViewModel : ObservableObject
     [RelayCommand]
     private void ShowOnlySecondDirectory() => CurrentViewMode = ViewMode.OnlyRight;
 
+    // ── Expand / Collapse all ──────────────────────────────────────────────
+
+    private bool _isBatchUpdating;
+
+    [RelayCommand]
+    private void ExpandAll()
+    {
+        _isBatchUpdating = true;
+        try
+        {
+            foreach (var node in GetAllNodes(RootNodes))
+            {
+                if (node.IsExpandable)
+                    node.IsExpanded = true;
+            }
+        }
+        finally
+        {
+            _isBatchUpdating = false;
+            RebuildFlatRows();
+        }
+    }
+
+    [RelayCommand]
+    private void CollapseAll()
+    {
+        _isBatchUpdating = true;
+        try
+        {
+            foreach (var node in GetAllNodes(RootNodes))
+            {
+                if (node.IsExpandable)
+                    node.IsExpanded = false;
+            }
+        }
+        finally
+        {
+            _isBatchUpdating = false;
+            RebuildFlatRows();
+        }
+    }
+
     // ── Selection side ────────────────────────────────────────────────────
 
     /// <summary>The side (left or right DataGrid) that was most recently interacted with.</summary>
@@ -498,7 +540,7 @@ public partial class FolderDiffViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded))
+        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded) && !_isBatchUpdating)
             RebuildFlatRows();
     }
 
