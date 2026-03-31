@@ -141,8 +141,9 @@ public class MacOSIconExtractorService : IIconExtractorService
         try
         {
             if (_iconCache.TryGetValue(DefaultFolderIconKey, out var cached)) return cached;
-            // Use the actual path if available, otherwise root – NSWorkspace always returns a folder icon
-            var path = string.IsNullOrEmpty(folderPath) ? "/" : folderPath;
+            // Use the actual path if available, otherwise /tmp which is always a plain directory
+            // and therefore gives the standard folder icon (not the disk icon returned for "/").
+            var path = string.IsNullOrEmpty(folderPath) ? "/tmp" : folderPath;
             var bitmap = ExtractIcon(path);
             _iconCache[DefaultFolderIconKey] = bitmap;
             return bitmap;
