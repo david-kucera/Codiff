@@ -9,15 +9,15 @@
     <Grid RowDefinitions="Auto,*">
 
         <!-- File path headers -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="#F8F8F8">
-            <Border Grid.Column="0" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1"
+        <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="{DynamicResource PanelHeaderBackground}">
+            <Border Grid.Column="0" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
                     IsVisible="{Binding LeftFileExists}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0"
                                Text="{Binding LeftFilePath}"
                                FontFamily="Consolas,Courier New,monospace"
                                FontSize="11"
-                               Foreground="#0066CC"
+                               Foreground="{DynamicResource FilePathForeground}"
                                TextTrimming="CharacterEllipsis"
                                Cursor="Hand"
                                TextDecorations="Underline"
@@ -27,20 +27,20 @@
                                Text="{Binding LeftStatusText}"
                                FontFamily="Consolas,Courier New,monospace"
                                FontSize="11"
-                               Foreground="#CC6600"
+                               Foreground="{DynamicResource FileStatusForeground}"
                                Margin="8,0,0,0"
                                VerticalAlignment="Center" />
                 </Grid>
             </Border>
-            <Border Grid.Column="1" Background="#DDDDDD" />
-            <Border Grid.Column="2" Padding="8,4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1"
+            <Border Grid.Column="1" Background="{DynamicResource SplitterBrush}" />
+            <Border Grid.Column="2" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
                     IsVisible="{Binding RightFileExists}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0"
                                Text="{Binding RightFilePath}"
                                FontFamily="Consolas,Courier New,monospace"
                                FontSize="11"
-                               Foreground="#0066CC"
+                               Foreground="{DynamicResource FilePathForeground}"
                                TextTrimming="CharacterEllipsis"
                                Cursor="Hand"
                                TextDecorations="Underline"
@@ -50,7 +50,7 @@
                                Text="{Binding RightStatusText}"
                                FontFamily="Consolas,Courier New,monospace"
                                FontSize="11"
-                               Foreground="#CC6600"
+                               Foreground="{DynamicResource FileStatusForeground}"
                                Margin="8,0,0,0"
                                VerticalAlignment="Center" />
                 </Grid>
@@ -60,14 +60,14 @@
         <!-- Side-by-side diff panels -->
         <Grid Grid.Row="1" ColumnDefinitions="*,4,*">
 
-            <!-- Left panel -->
+                     <!-- Left panel -->
             <Grid Grid.Column="0" ColumnDefinitions="*,12">
                 <ScrollViewer x:Name="LeftScrollViewer"
                               Grid.Column="0"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Lines}"
-                                  Background="White">
+                                  Background="{DynamicResource DataGridBackground}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
@@ -75,14 +75,14 @@
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"
-                                            Background="#F0F0F0"
-                                            BorderBrush="#DDDDDD"
+                                            Background="{DynamicResource LineNumberBackground}"
+                                            BorderBrush="{DynamicResource LineNumberBorderBrush}"
                                             BorderThickness="0,0,1,0"
                                             Padding="4,1">
                                         <TextBlock Text="{Binding LeftLineNumberText}"
                                                    FontFamily="Consolas,Courier New,monospace"
                                                    FontSize="12"
-                                                   Foreground="#888888"
+                                                   Foreground="{DynamicResource LineNumberForeground}"
                                                    TextAlignment="Right" />
                                     </Border>
                                     <!-- Content -->
@@ -110,7 +110,7 @@
 
             <!-- Vertical splitter -->
             <GridSplitter Grid.Column="1"
-                          Background="#DDDDDD"
+                          Background="{DynamicResource SplitterBrush}"
                           ResizeDirection="Columns" />
 
             <!-- Right panel -->
@@ -120,7 +120,7 @@
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Lines}"
-                                  Background="White">
+                                  Background="{DynamicResource DataGridBackground}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DiffLineViewModel">
                                 <Grid ColumnDefinitions="48,*"
@@ -128,14 +128,14 @@
                                       MinHeight="20">
                                     <!-- Line number -->
                                     <Border Grid.Column="0"
-                                            Background="#F0F0F0"
-                                            BorderBrush="#DDDDDD"
+                                            Background="{DynamicResource LineNumberBackground}"
+                                            BorderBrush="{DynamicResource LineNumberBorderBrush}"
                                             BorderThickness="0,0,1,0"
                                             Padding="4,1">
                                         <TextBlock Text="{Binding RightLineNumberText}"
                                                    FontFamily="Consolas,Courier New,monospace"
                                                    FontSize="12"
-                                                   Foreground="#888888"
+                                                   Foreground="{DynamicResource LineNumberForeground}"
                                                    TextAlignment="Right" />
                                     </Border>
                                     <!-- Content -->

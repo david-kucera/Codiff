@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Codiff.Controls;
+using Codiff.Services;
 using Codiff.ViewModels;
 
 namespace Codiff.Views;
@@ -23,6 +24,22 @@ public partial class FileDiffView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         InitializeScrollSync();
+        ThemeService.Instance.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ThemeService.Instance.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        if (DataContext is FileDiffViewModel vm)
+        {
+            foreach (var line in vm.Lines)
+                line.NotifyThemeChanged();
+        }
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

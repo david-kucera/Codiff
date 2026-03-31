@@ -23,9 +23,17 @@ public enum FolderSide
 /// </summary>
 public partial class FolderNodeViewModel : ObservableObject
 {
-    private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#FFFACD"));
-    private static readonly IBrush PresentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
-    private static readonly IBrush MissingBrush = new SolidColorBrush(Color.Parse("#FFCCCC"));
+    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#FFFACD"));
+    private static readonly IBrush PresentBrushLight = new SolidColorBrush(Color.Parse("#CCFFCC"));
+    private static readonly IBrush MissingBrushLight = new SolidColorBrush(Color.Parse("#FFCCCC"));
+
+    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#3A3000"));
+    private static readonly IBrush PresentBrushDark = new SolidColorBrush(Color.Parse("#003000"));
+    private static readonly IBrush MissingBrushDark = new SolidColorBrush(Color.Parse("#3A0000"));
+
+    private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
+    private static IBrush PresentBrush => ThemeService.Instance.IsDark ? PresentBrushDark : PresentBrushLight;
+    private static IBrush MissingBrush => ThemeService.Instance.IsDark ? MissingBrushDark : MissingBrushLight;
 
     private enum NodeDisplayStatus
     {
@@ -120,6 +128,13 @@ public partial class FolderNodeViewModel : ObservableObject
     {
         if (IsExpandable)
             IsExpanded = !IsExpanded;
+    }
+
+    /// <summary>Notifies the view that all brush-bound properties have changed (called on theme toggle).</summary>
+    public void NotifyThemeChanged()
+    {
+        OnPropertyChanged(nameof(LeftStatusColor));
+        OnPropertyChanged(nameof(RightStatusColor));
     }
 
     public FolderNodeViewModel(
