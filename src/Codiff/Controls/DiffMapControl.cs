@@ -4,7 +4,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Codiff.Models;
+using Codiff.Services;
 using Codiff.ViewModels;
 
 namespace Codiff.Controls;
@@ -20,12 +22,28 @@ public class DiffMapControl : Control
     public static readonly StyledProperty<bool> IsLeftSideProperty =
         AvaloniaProperty.Register<DiffMapControl, bool>(nameof(IsLeftSide), true);
 
-    private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#CCAA00"));
-    private static readonly IBrush AddedBrush = new SolidColorBrush(Color.Parse("#22AA22"));
-    private static readonly IBrush DeletedBrush = new SolidColorBrush(Color.Parse("#DD4444"));
-    private static readonly IBrush BackgroundBrush = new SolidColorBrush(Color.Parse("#F0F0F0"));
-    private static readonly IPen BorderPen = new Pen(new SolidColorBrush(Color.Parse("#DDDDDD")), 1);
-    private static readonly IBrush ViewportBrush = new SolidColorBrush(Color.Parse("#22000000"));
+    // Light-theme brushes
+    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#CCAA00"));
+    private static readonly IBrush AddedBrushLight = new SolidColorBrush(Color.Parse("#22AA22"));
+    private static readonly IBrush DeletedBrushLight = new SolidColorBrush(Color.Parse("#DD4444"));
+    private static readonly IBrush BackgroundBrushLight = new SolidColorBrush(Color.Parse("#F0F0F0"));
+    private static readonly IPen BorderPenLight = new Pen(new SolidColorBrush(Color.Parse("#DDDDDD")), 1);
+    private static readonly IBrush ViewportBrushLight = new SolidColorBrush(Color.Parse("#22000000"));
+
+    // Dark-theme brushes
+    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#CCAA00"));
+    private static readonly IBrush AddedBrushDark = new SolidColorBrush(Color.Parse("#22AA22"));
+    private static readonly IBrush DeletedBrushDark = new SolidColorBrush(Color.Parse("#DD4444"));
+    private static readonly IBrush BackgroundBrushDark = new SolidColorBrush(Color.Parse("#1E1E1E"));
+    private static readonly IPen BorderPenDark = new Pen(new SolidColorBrush(Color.Parse("#444444")), 1);
+    private static readonly IBrush ViewportBrushDark = new SolidColorBrush(Color.Parse("#44FFFFFF"));
+
+    private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
+    private static IBrush AddedBrush => ThemeService.Instance.IsDark ? AddedBrushDark : AddedBrushLight;
+    private static IBrush DeletedBrush => ThemeService.Instance.IsDark ? DeletedBrushDark : DeletedBrushLight;
+    private static IBrush BackgroundBrush => ThemeService.Instance.IsDark ? BackgroundBrushDark : BackgroundBrushLight;
+    private static IPen BorderPen => ThemeService.Instance.IsDark ? BorderPenDark : BorderPenLight;
+    private static IBrush ViewportBrush => ThemeService.Instance.IsDark ? ViewportBrushDark : ViewportBrushLight;
 
     public ObservableCollection<DiffLineViewModel>? Lines
     {
@@ -55,6 +73,20 @@ public class DiffMapControl : Control
     {
         Cursor = new Cursor(StandardCursorType.Hand);
     }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ThemeService.Instance.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ThemeService.Instance.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged() => InvalidateVisual();
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -176,3 +208,4 @@ public class DiffMapControl : Control
         }
     }
 }
+

@@ -7,4 +7,68 @@
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
     </Application.Styles>
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <!-- Toolbar / top bar -->
+                    <SolidColorBrush x:Key="ToolbarBackground" Color="#F0F0F0"/>
+                    <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#CCCCCC"/>
+                    <!-- File diff header -->
+                    <SolidColorBrush x:Key="PanelHeaderBackground" Color="#F8F8F8"/>
+                    <SolidColorBrush x:Key="SplitterBrush" Color="#DDDDDD"/>
+                    <!-- Line numbers -->
+                    <SolidColorBrush x:Key="LineNumberBackground" Color="#F0F0F0"/>
+                    <SolidColorBrush x:Key="LineNumberBorderBrush" Color="#DDDDDD"/>
+                    <SolidColorBrush x:Key="LineNumberForeground" Color="#888888"/>
+                    <!-- Folder path labels -->
+                    <SolidColorBrush x:Key="FolderPathBackground" Color="#EEF2FB"/>
+                    <SolidColorBrush x:Key="FolderPathBorderBrush" Color="#AABBDD"/>
+                    <SolidColorBrush x:Key="FolderPathForeground" Color="#0055AA"/>
+                    <!-- Folder legend bar -->
+                    <SolidColorBrush x:Key="LegendBackground" Color="#F8F8F8"/>
+                    <SolidColorBrush x:Key="LegendBorderBrush" Color="#CCCCCC"/>
+                    <!-- DataGrid -->
+                    <SolidColorBrush x:Key="DataGridBackground" Color="White"/>
+                    <SolidColorBrush x:Key="CellTextForeground" Color="Black"/>
+                    <!-- File diff paths -->
+                    <SolidColorBrush x:Key="FilePathForeground" Color="#0066CC"/>
+                    <SolidColorBrush x:Key="FileStatusForeground" Color="#CC6600"/>
+                    <!-- Diff colour swatches in legend -->
+                    <Color x:Key="DiffModifiedColor">#FFFACD</Color>
+                    <Color x:Key="DiffPresentColor">#CCFFCC</Color>
+                    <Color x:Key="DiffMissingColor">#FFCCCC</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <!-- Toolbar / top bar -->
+                    <SolidColorBrush x:Key="ToolbarBackground" Color="#2D2D2D"/>
+                    <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#444444"/>
+                    <!-- File diff header -->
+                    <SolidColorBrush x:Key="PanelHeaderBackground" Color="#252526"/>
+                    <SolidColorBrush x:Key="SplitterBrush" Color="#444444"/>
+                    <!-- Line numbers -->
+                    <SolidColorBrush x:Key="LineNumberBackground" Color="#252526"/>
+                    <SolidColorBrush x:Key="LineNumberBorderBrush" Color="#444444"/>
+                    <SolidColorBrush x:Key="LineNumberForeground" Color="#858585"/>
+                    <!-- Folder path labels -->
+                    <SolidColorBrush x:Key="FolderPathBackground" Color="#1E2A3D"/>
+                    <SolidColorBrush x:Key="FolderPathBorderBrush" Color="#2A4A7A"/>
+                    <SolidColorBrush x:Key="FolderPathForeground" Color="#4499DD"/>
+                    <!-- Folder legend bar -->
+                    <SolidColorBrush x:Key="LegendBackground" Color="#252526"/>
+                    <SolidColorBrush x:Key="LegendBorderBrush" Color="#444444"/>
+                    <!-- DataGrid -->
+                    <SolidColorBrush x:Key="DataGridBackground" Color="#1E1E1E"/>
+                    <SolidColorBrush x:Key="CellTextForeground" Color="#D4D4D4"/>
+                    <!-- File diff paths -->
+                    <SolidColorBrush x:Key="FilePathForeground" Color="#4499DD"/>
+                    <SolidColorBrush x:Key="FileStatusForeground" Color="#CE9178"/>
+                    <!-- Diff colour swatches in legend -->
+                    <Color x:Key="DiffModifiedColor">#4A4200</Color>
+                    <Color x:Key="DiffPresentColor">#003300</Color>
+                    <Color x:Key="DiffMissingColor">#3A0000</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

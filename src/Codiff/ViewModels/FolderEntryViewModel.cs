@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using Codiff.Models;
+using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Codiff.ViewModels;
@@ -16,9 +17,15 @@ public partial class FolderEntryViewModel : ObservableObject
 
     public IBrush StatusColor => Model.Status switch
     {
-        FileStatus.Modified => new SolidColorBrush(Color.Parse("#FFFACD")),
-        FileStatus.OnlyInLeft => new SolidColorBrush(Color.Parse("#FFCCCC")),
-        FileStatus.OnlyInRight => new SolidColorBrush(Color.Parse("#CCFFCC")),
+        FileStatus.Modified => ThemeService.Instance.IsDark
+            ? new SolidColorBrush(Color.Parse("#4A4200"))
+            : new SolidColorBrush(Color.Parse("#FFFACD")),
+        FileStatus.OnlyInLeft => ThemeService.Instance.IsDark
+            ? new SolidColorBrush(Color.Parse("#3A0000"))
+            : new SolidColorBrush(Color.Parse("#FFCCCC")),
+        FileStatus.OnlyInRight => ThemeService.Instance.IsDark
+            ? new SolidColorBrush(Color.Parse("#003000"))
+            : new SolidColorBrush(Color.Parse("#CCFFCC")),
         _ => Brushes.Transparent
     };
 

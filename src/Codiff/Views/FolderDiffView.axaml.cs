@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Codiff.Services;
 using Codiff.ViewModels;
 
 namespace Codiff.Views;
@@ -43,6 +44,20 @@ public partial class FolderDiffView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         SetupGrids();
+        ThemeService.Instance.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ThemeService.Instance.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        if (_subscribedViewModel == null) return;
+        foreach (var node in _subscribedViewModel.FlatRows)
+            node.NotifyThemeChanged();
     }
 
     // ── Path-label taps ────────────────────────────────────────────────────
@@ -183,19 +198,6 @@ public partial class FolderDiffView : UserControl
         // Column-header sort clicks ──────────────────────────────────────────
         leftGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
         rightGrid.AddHandler(PointerReleasedEvent, OnDataGridPointerReleased, RoutingStrategies.Tunnel);
-
-        // Per-row background colours ─────────────────────────────────────────
-        leftGrid.LoadingRow += (_, args) =>
-        {
-            if (args.Row.DataContext is FolderNodeViewModel node)
-                args.Row.Background = node.LeftStatusColor;
-        };
-
-        rightGrid.LoadingRow += (_, args) =>
-        {
-            if (args.Row.DataContext is FolderNodeViewModel node)
-                args.Row.Background = node.RightStatusColor;
-        };
 
         // Vertical scroll synchronisation ─────────────────────────────────────
         // DataGrid.ProcessVerticalScroll(ScrollEventType) is the actual scroll

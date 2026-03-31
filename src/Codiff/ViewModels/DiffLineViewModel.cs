@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using Codiff.Models;
+using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Codiff.ViewModels;
@@ -12,9 +13,22 @@ public class SpanViewModel
 
 public partial class DiffLineViewModel : ObservableObject
 {
-    private static readonly IBrush ModifiedBrush = new SolidColorBrush(Color.Parse("#FFFACD"));
-    private static readonly IBrush OneSidedContentBrush = new SolidColorBrush(Color.Parse("#CCFFCC"));
-    private static readonly IBrush FillerBrush = new SolidColorBrush(Color.Parse("#EEEEEE"));
+    // Light-theme brushes
+    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#FFFACD"));
+    private static readonly IBrush OneSidedContentBrushLight = new SolidColorBrush(Color.Parse("#CCFFCC"));
+    private static readonly IBrush FillerBrushLight = new SolidColorBrush(Color.Parse("#EEEEEE"));
+    private static readonly IBrush NormalBrushLight = Brushes.White;
+
+    // Dark-theme brushes
+    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#3A3000"));
+    private static readonly IBrush OneSidedContentBrushDark = new SolidColorBrush(Color.Parse("#003000"));
+    private static readonly IBrush FillerBrushDark = new SolidColorBrush(Color.Parse("#2A2A2A"));
+    private static readonly IBrush NormalBrushDark = new SolidColorBrush(Color.Parse("#1E1E1E"));
+
+    private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
+    private static IBrush OneSidedContentBrush => ThemeService.Instance.IsDark ? OneSidedContentBrushDark : OneSidedContentBrushLight;
+    private static IBrush FillerBrush => ThemeService.Instance.IsDark ? FillerBrushDark : FillerBrushLight;
+    private static IBrush NormalBrush => ThemeService.Instance.IsDark ? NormalBrushDark : NormalBrushLight;
 
     public DiffLine Model { get; }
 
@@ -42,7 +56,7 @@ public partial class DiffLineViewModel : ObservableObject
         LineType.Modified => ModifiedBrush,
         LineType.Deleted => OneSidedContentBrush,
         LineType.Filler => FillerBrush,
-        _ => Brushes.White
+        _ => NormalBrush
     };
 
     public IBrush RightBackground => Model.LineType switch
@@ -50,7 +64,7 @@ public partial class DiffLineViewModel : ObservableObject
         LineType.Modified => ModifiedBrush,
         LineType.Added => OneSidedContentBrush,
         LineType.Filler => FillerBrush,
-        _ => Brushes.White
+        _ => NormalBrush
     };
 
     public IReadOnlyList<SpanViewModel> LeftSpanViewModels { get; }
@@ -65,6 +79,14 @@ public partial class DiffLineViewModel : ObservableObject
         _rightText = model.RightText;
         LeftSpanViewModels = BuildSpanViewModels(model.LeftSpans, model.LineType, isLeft: true);
         RightSpanViewModels = BuildSpanViewModels(model.RightSpans, model.LineType, isLeft: false);
+    }
+
+    /// <summary>Notifies the view that all brush-bound properties have changed (called on theme toggle).</summary>
+    public void NotifyThemeChanged()
+    {
+        OnPropertyChanged(nameof(LeftBackground));
+        OnPropertyChanged(nameof(RightBackground));
+        OnPropertyChanged(nameof(Background));
     }
 
     private static IReadOnlyList<SpanViewModel> BuildSpanViewModels(IReadOnlyList<DiffSpan> spans, LineType lineType, bool isLeft)

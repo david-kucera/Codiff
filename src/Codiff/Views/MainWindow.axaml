@@ -43,12 +43,15 @@
                           Command="{Binding FolderDiffViewModel.ShowOnlySecondDirectoryCommand}" />
                 <MenuItem Header="Show Both Directories"
                           Command="{Binding FolderDiffViewModel.ShowBothDirectoriesCommand}" />
+                <Separator />
+                <MenuItem Header="{Binding ThemeMenuHeader}"
+                          Command="{Binding ToggleThemeCommand}" />
             </MenuItem>
         </Menu>
 
         <Border DockPanel.Dock="Top"
-                Background="#F0F0F0"
-                BorderBrush="#CCCCCC"
+                Background="{DynamicResource ToolbarBackground}"
+                BorderBrush="{DynamicResource ToolbarBorderBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="8,6">
             <StackPanel Orientation="Horizontal" Spacing="8">

@@ -19,13 +19,13 @@
               Margin="4,4,4,4">
             <!-- Left path label -->
             <Border Grid.Column="0"
-                    Background="#EEF2FB"
-                    BorderBrush="#AABBDD"
+                    Background="{DynamicResource FolderPathBackground}"
+                    BorderBrush="{DynamicResource FolderPathBorderBrush}"
                     BorderThickness="1"
                     Padding="6,4">
                 <TextBlock Text="{Binding LeftFolderPath}"
                            FontSize="13"
-                           Foreground="#0055AA"
+                           Foreground="{DynamicResource FolderPathForeground}"
                            TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding LeftFolderPath}"
                            Cursor="Hand"
@@ -34,13 +34,13 @@
 
             <!-- Right path label -->
             <Border Grid.Column="2"
-                    Background="#EEF2FB"
-                    BorderBrush="#AABBDD"
+                    Background="{DynamicResource FolderPathBackground}"
+                    BorderBrush="{DynamicResource FolderPathBorderBrush}"
                     BorderThickness="1"
                     Padding="6,4">
                 <TextBlock Text="{Binding RightFolderPath}"
                            FontSize="13"
-                           Foreground="#0055AA"
+                           Foreground="{DynamicResource FolderPathForeground}"
                            TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding RightFolderPath}"
                            Cursor="Hand"
@@ -50,22 +50,22 @@
 
         <!-- Legend -->
         <Border DockPanel.Dock="Bottom"
-                Background="#F8F8F8"
-                BorderBrush="#CCCCCC"
+                Background="{DynamicResource LegendBackground}"
+                BorderBrush="{DynamicResource LegendBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="8,4">
             <Grid>
                 <StackPanel Orientation="Horizontal" Spacing="16">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Border Width="14" Height="14" Background="#FFFACD" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <Border Width="14" Height="14" Background="{DynamicResource DiffModifiedColor}" BorderBrush="{DynamicResource LegendBorderBrush}" BorderThickness="1" VerticalAlignment="Center" />
                         <TextBlock Text="Modified" FontSize="11" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Border Width="14" Height="14" Background="#CCFFCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <Border Width="14" Height="14" Background="{DynamicResource DiffPresentColor}" BorderBrush="{DynamicResource LegendBorderBrush}" BorderThickness="1" VerticalAlignment="Center" />
                         <TextBlock Text="Only in this side" FontSize="11" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Border Width="14" Height="14" Background="#FFCCCC" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center" />
+                        <Border Width="14" Height="14" Background="{DynamicResource DiffMissingColor}" BorderBrush="{DynamicResource LegendBorderBrush}" BorderThickness="1" VerticalAlignment="Center" />
                         <TextBlock Text="Missing from this side" FontSize="11" VerticalAlignment="Center" />
                     </StackPanel>
                 </StackPanel>
@@ -104,10 +104,15 @@
                       CanUserSortColumns="False"
                       CanUserReorderColumns="False"
                       IsReadOnly="True"
-                      Background="White"
+                      Background="{DynamicResource DataGridBackground}"
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column"
                       DoubleTapped="OnGridDoubleTapped">
+                <DataGrid.Styles>
+                    <Style Selector="DataGridRow" x:DataType="vm:FolderNodeViewModel">
+                        <Setter Property="Background" Value="{Binding LeftStatusColor}" />
+                    </Style>
+                </DataGrid.Styles>
                 <DataGrid.Columns>
 
                     <!-- Expand/collapse toggle -->
@@ -142,7 +147,7 @@
                                                FontFamily="Consolas,Courier New,monospace"
                                                FontSize="11"
                                                VerticalAlignment="Center"
-                                               Foreground="Black"
+                                               Foreground="{DynamicResource CellTextForeground}"
                                                TextTrimming="CharacterEllipsis"
                                                ToolTip.Tip="{Binding LeftFullPath}"
                                                Margin="2,0,0,0" />
@@ -159,7 +164,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            HorizontalAlignment="Right"
                                            Margin="0,0,4,0" />
                             </DataTemplate>
@@ -174,7 +179,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            TextTrimming="CharacterEllipsis"
                                            Margin="4,0,0,0" />
                             </DataTemplate>
@@ -189,7 +194,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            Margin="4,0,0,0" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -200,7 +205,7 @@
 
             <!-- Vertical splitter -->
                 <GridSplitter Grid.Column="1"
-                              Background="#DDDDDD"
+                              Background="{DynamicResource SplitterBrush}"
                               ResizeDirection="Columns" />
 
             <!-- Right DataGrid -->
@@ -213,10 +218,15 @@
                       CanUserSortColumns="False"
                       CanUserReorderColumns="False"
                       IsReadOnly="True"
-                      Background="White"
+                      Background="{DynamicResource DataGridBackground}"
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column"
                       DoubleTapped="OnGridDoubleTapped">
+                <DataGrid.Styles>
+                    <Style Selector="DataGridRow" x:DataType="vm:FolderNodeViewModel">
+                        <Setter Property="Background" Value="{Binding RightStatusColor}" />
+                    </Style>
+                </DataGrid.Styles>
                 <DataGrid.Columns>
 
                     <!-- Expand/collapse toggle -->
@@ -251,7 +261,7 @@
                                                FontFamily="Consolas,Courier New,monospace"
                                                FontSize="11"
                                                VerticalAlignment="Center"
-                                               Foreground="Black"
+                                               Foreground="{DynamicResource CellTextForeground}"
                                                TextTrimming="CharacterEllipsis"
                                                ToolTip.Tip="{Binding RightFullPath}"
                                                Margin="2,0,0,0" />
@@ -268,7 +278,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            HorizontalAlignment="Right"
                                            Margin="0,0,4,0" />
                             </DataTemplate>
@@ -283,7 +293,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            TextTrimming="CharacterEllipsis"
                                            Margin="4,0,0,0" />
                             </DataTemplate>
@@ -298,7 +308,7 @@
                                            FontFamily="Consolas,Courier New,monospace"
                                            FontSize="11"
                                            VerticalAlignment="Center"
-                                           Foreground="Black"
+                                           Foreground="{DynamicResource CellTextForeground}"
                                            Margin="4,0,0,0" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -315,14 +325,14 @@
                           IsVisible="{Binding IsStatsVisible}"
                           ResizeDirection="Rows"
                           HorizontalAlignment="Stretch"
-                          Background="#DDDDDD" />
+                          Background="{DynamicResource SplitterBrush}" />
 
             <!-- Row 2: statistics stacked bar chart -->
             <Border x:Name="StatsPanel"
                     Grid.Row="2"
                     IsVisible="{Binding IsStatsVisible}"
-                    Background="#F8F8F8"
-                    BorderBrush="#CCCCCC"
+                    Background="{DynamicResource LegendBackground}"
+                    BorderBrush="{DynamicResource LegendBorderBrush}"
                     BorderThickness="0,1,0,0">
                 <Grid Margin="8,6">
                     <Grid.ColumnDefinitions>

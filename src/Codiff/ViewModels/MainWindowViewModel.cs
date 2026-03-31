@@ -1,3 +1,4 @@
+using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -14,6 +15,12 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isFolderViewVisible;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeMenuHeader))]
+    private bool _isDarkTheme;
+
+    public string ThemeMenuHeader => IsDarkTheme ? "Switch to Light Theme" : "Switch to Dark Theme";
+
     public Func<Task<(string? left, string? right)>>? OpenFilesDialog;
     public Func<Task<(string? left, string? right)>>? OpenFoldersDialog;
     public Action? ExitApplication;
@@ -25,6 +32,13 @@ public partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private void Exit() => ExitApplication?.Invoke();
+
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        ThemeService.Instance.Toggle();
+        IsDarkTheme = ThemeService.Instance.IsDark;
+    }
 
     [RelayCommand]
     private async Task OpenFiles()
