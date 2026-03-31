@@ -158,7 +158,7 @@ public partial class FolderNodeViewModel : ObservableObject
 
     private void LoadIcons()
     {
-        var iconService = IconExtractorService.Instance;
+        var iconService = IconExtractorServiceFactory.Instance;
 
         // Load icons asynchronously to avoid blocking the UI
         Task.Run(() =>
