@@ -27,6 +27,21 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
+                <MenuItem x:Name="RecentMenuItem"
+                          Header="Recent Files/Directories"
+                          IsEnabled="{Binding HasRecentComparisons}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconRecentComparisons}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Clear Recent"
+                          Command="{Binding ClearRecentCommand}"
+                          IsEnabled="{Binding HasRecentComparisons}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconClearRecent}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
                 <MenuItem Header="Swap Directories"
                           Command="{Binding FolderDiffViewModel.SwapDirectoriesCommand}">
                     <MenuItem.Icon>
