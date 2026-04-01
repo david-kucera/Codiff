@@ -46,10 +46,14 @@ public partial class FileDiffViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SplitterOrientationMenuHeader))]
+    [NotifyPropertyChangedFor(nameof(IsVerticalSplit))]
     private bool _isHorizontalSplit;
 
     public string SplitterOrientationMenuHeader =>
         IsHorizontalSplit ? "Toggle to Vertical Split" : "Toggle to Horizontal Split";
+
+    /// <summary>True when the split is vertical (side-by-side). Inverse of <see cref="IsHorizontalSplit"/>.</summary>
+    public bool IsVerticalSplit => !IsHorizontalSplit;
 
     /// <summary>Raised when the view should copy the given text to the clipboard.</summary>
     public event Action<string>? CopyAsTextRequested;
@@ -104,10 +108,8 @@ public partial class FileDiffViewModel : ObservableObject
         LeftStatusText = string.Empty;
         RightStatusText = string.Empty;
 
-        _leftFileExists = result.LeftFileExists;
-        _rightFileExists = result.RightFileExists;
-        OnPropertyChanged("LeftFileExists");
-        OnPropertyChanged("RightFileExists");
+        LeftFileExists = result.LeftFileExists;
+        RightFileExists = result.RightFileExists;
 
         _suppressTextEdited = false;
 

@@ -11,7 +11,7 @@
         <!-- ═══════════════════════════════════════════════════════════════════
              VERTICAL (side-by-side) layout — default
              ═══════════════════════════════════════════════════════════════════ -->
-        <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsHorizontalSplit}">
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsVerticalSplit}">
 
             <!-- File path headers -->
             <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="{DynamicResource PanelHeaderBackground}">
