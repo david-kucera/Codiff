@@ -27,18 +27,12 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Recent Files/Directories"
-                          IsEnabled="{Binding HasRecentComparisons}"
-                          ItemsSource="{Binding RecentComparisons}">
+                <MenuItem x:Name="RecentMenuItem"
+                          Header="Recent Files/Directories"
+                          IsEnabled="{Binding HasRecentComparisons}">
                     <MenuItem.Icon>
                         <PathIcon Data="{StaticResource IconRecentComparisons}" Width="16" Height="16" />
                     </MenuItem.Icon>
-                    <MenuItem.ItemContainerTheme>
-                        <ControlTheme TargetType="MenuItem" x:DataType="vm:RecentComparisonViewModel">
-                            <Setter Property="Header" Value="{Binding DisplayText}" />
-                            <Setter Property="Command" Value="{Binding OpenCommand}" />
-                        </ControlTheme>
-                    </MenuItem.ItemContainerTheme>
                 </MenuItem>
                 <MenuItem Header="Clear Recent"
                           Command="{Binding ClearRecentCommand}"

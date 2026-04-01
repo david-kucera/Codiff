@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
@@ -35,6 +36,28 @@ public partial class MainWindow : Window
             vm.OpenFilesDialog = OpenFilesDialogAsync;
             vm.OpenFoldersDialog = OpenFoldersDialogAsync;
             vm.ExitApplication = Close;
+
+            vm.RecentComparisons.CollectionChanged += OnRecentComparisonsChanged;
+            RebuildRecentMenuItems(vm);
+        }
+    }
+
+    private void OnRecentComparisonsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            RebuildRecentMenuItems(vm);
+    }
+
+    private void RebuildRecentMenuItems(MainWindowViewModel vm)
+    {
+        RecentMenuItem.Items.Clear();
+        foreach (var recent in vm.RecentComparisons)
+        {
+            RecentMenuItem.Items.Add(new MenuItem
+            {
+                Header = recent.DisplayText,
+                Command = recent.OpenCommand
+            });
         }
     }
 
