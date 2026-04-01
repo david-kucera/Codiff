@@ -27,8 +27,21 @@ public class ThemeService
             _isDark = value;
             if (Application.Current is { } app)
                 app.RequestedThemeVariant = value ? ThemeVariant.Dark : ThemeVariant.Light;
+            ConfigService.Instance.Config.IsDarkTheme = _isDark;
+            ConfigService.Instance.Save();
             ThemeChanged?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// Applies the given theme at startup without raising <see cref="ThemeChanged"/>.
+    /// Must be called after <see cref="Application.Current"/> is available.
+    /// </summary>
+    public void Initialize(bool isDark)
+    {
+        _isDark = isDark;
+        if (Application.Current is { } app)
+            app.RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
     }
 
     /// <summary>Toggles between dark and light theme.</summary>
