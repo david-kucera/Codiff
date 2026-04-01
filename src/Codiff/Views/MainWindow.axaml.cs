@@ -53,11 +53,24 @@ public partial class MainWindow : Window
         RecentMenuItem.Items.Clear();
         foreach (var recent in vm.RecentComparisons)
         {
-            RecentMenuItem.Items.Add(new MenuItem
+            var menuItem = new MenuItem
             {
                 Header = recent.DisplayText,
                 Command = recent.OpenCommand
-            });
+            };
+            // Close the menu after the command executes
+            menuItem.Click += (s, e) =>
+            {
+                // Close all open menus by setting the menu's IsOpen to false
+                if (this.FindControl<Menu>("MainMenu") is Menu mainMenu)
+                {
+                    foreach (var item in mainMenu.Items.OfType<MenuItem>())
+                    {
+                        item.IsSubMenuOpen = false;
+                    }
+                }
+            };
+            RecentMenuItem.Items.Add(menuItem);
         }
     }
 
