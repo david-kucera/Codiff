@@ -6,160 +6,335 @@
              x:DataType="vm:FileDiffViewModel"
              Focusable="True">
 
-    <Grid RowDefinitions="Auto,*">
+    <Panel>
 
-        <!-- File path headers -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="{DynamicResource PanelHeaderBackground}">
-            <Border Grid.Column="0" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
-                    IsVisible="{Binding LeftFileExists}">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding LeftFilePath}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="11"
-                               Foreground="{DynamicResource FilePathForeground}"
-                               TextTrimming="CharacterEllipsis"
-                               Cursor="Hand"
-                               TextDecorations="Underline"
-                               ToolTip.Tip="Click to open in file explorer"
-                               PointerPressed="OnLeftPathPointerPressed" />
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding LeftStatusText}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="11"
-                               Foreground="{DynamicResource FileStatusForeground}"
-                               Margin="8,0,0,0"
-                               VerticalAlignment="Center" />
-                </Grid>
-            </Border>
-            <Border Grid.Column="1" Background="{DynamicResource SplitterBrush}" />
-            <Border Grid.Column="2" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
-                    IsVisible="{Binding RightFileExists}">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding RightFilePath}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="11"
-                               Foreground="{DynamicResource FilePathForeground}"
-                               TextTrimming="CharacterEllipsis"
-                               Cursor="Hand"
-                               TextDecorations="Underline"
-                               ToolTip.Tip="Click to open in file explorer"
-                               PointerPressed="OnRightPathPointerPressed" />
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding RightStatusText}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="11"
-                               Foreground="{DynamicResource FileStatusForeground}"
-                               Margin="8,0,0,0"
-                               VerticalAlignment="Center" />
-                </Grid>
-            </Border>
-        </Grid>
+        <!-- ═══════════════════════════════════════════════════════════════════
+             VERTICAL (side-by-side) layout — default
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsVerticalSplit}">
 
-        <!-- Side-by-side diff panels -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,4,*">
-
-                     <!-- Left panel -->
-            <Grid Grid.Column="0" ColumnDefinitions="*,12">
-                <ScrollViewer x:Name="LeftScrollViewer"
-                              Grid.Column="0"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Lines}"
-                                  Background="{DynamicResource DataGridBackground}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DiffLineViewModel">
-                                <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding LeftBackground}"
-                                      MinHeight="20">
-                                    <!-- Line number -->
-                                    <Border Grid.Column="0"
-                                            Background="{DynamicResource LineNumberBackground}"
-                                            BorderBrush="{DynamicResource LineNumberBorderBrush}"
-                                            BorderThickness="0,0,1,0"
-                                            Padding="4,1">
-                                        <TextBlock Text="{Binding LeftLineNumberText}"
-                                                   FontFamily="Consolas,Courier New,monospace"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource LineNumberForeground}"
-                                                   TextAlignment="Right" />
-                                    </Border>
-                                    <!-- Content -->
-                                    <Border Grid.Column="1" Padding="0,1">
-                                        <TextBox Text="{Binding LeftText, Mode=TwoWay}"
-                                                 FontFamily="Consolas,Courier New,monospace"
-                                                 FontSize="13"
-                                                 TextWrapping="NoWrap"
-                                                 AcceptsReturn="False"
-                                                 BorderThickness="0"
-                                                 Padding="4,0"
-                                                 MinHeight="18"
-                                                 Background="Transparent" />
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-                <controls:DiffMapControl x:Name="LeftDiffMap"
-                                         Grid.Column="1"
-                                         Lines="{Binding Lines}"
-                                         IsLeftSide="True" />
+            <!-- File path headers -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,4,*" Background="{DynamicResource PanelHeaderBackground}">
+                <Border Grid.Column="0" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
+                        IsVisible="{Binding LeftFileExists}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding LeftFilePath}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FilePathForeground}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   ToolTip.Tip="Click to open in file explorer"
+                                   PointerPressed="OnLeftPathPointerPressed" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding LeftStatusText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FileStatusForeground}"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Background="{DynamicResource SplitterBrush}" />
+                <Border Grid.Column="2" Padding="8,4" BorderBrush="{DynamicResource SplitterBrush}" BorderThickness="0,0,0,1"
+                        IsVisible="{Binding RightFileExists}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding RightFilePath}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FilePathForeground}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   ToolTip.Tip="Click to open in file explorer"
+                                   PointerPressed="OnRightPathPointerPressed" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding RightStatusText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FileStatusForeground}"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
             </Grid>
 
-            <!-- Vertical splitter -->
-            <GridSplitter Grid.Column="1"
+            <!-- Side-by-side diff panels -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,4,*">
+
+                         <!-- Left panel -->
+                <Grid Grid.Column="0" ColumnDefinitions="*,12">
+                    <ScrollViewer x:Name="LeftScrollViewer"
+                                  Grid.Column="0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Lines}"
+                                      Background="{DynamicResource DataGridBackground}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiffLineViewModel">
+                                    <Grid ColumnDefinitions="48,*"
+                                          Background="{Binding LeftBackground}"
+                                          MinHeight="20">
+                                        <!-- Line number -->
+                                        <Border Grid.Column="0"
+                                                Background="{DynamicResource LineNumberBackground}"
+                                                BorderBrush="{DynamicResource LineNumberBorderBrush}"
+                                                BorderThickness="0,0,1,0"
+                                                Padding="4,1">
+                                            <TextBlock Text="{Binding LeftLineNumberText}"
+                                                       FontFamily="Consolas,Courier New,monospace"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource LineNumberForeground}"
+                                                       TextAlignment="Right" />
+                                        </Border>
+                                        <!-- Content -->
+                                        <Border Grid.Column="1" Padding="0,1">
+                                            <TextBox Text="{Binding LeftText, Mode=TwoWay}"
+                                                     FontFamily="Consolas,Courier New,monospace"
+                                                     FontSize="13"
+                                                     TextWrapping="NoWrap"
+                                                     AcceptsReturn="False"
+                                                     BorderThickness="0"
+                                                     Padding="4,0"
+                                                     MinHeight="18"
+                                                     Background="Transparent" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <controls:DiffMapControl x:Name="LeftDiffMap"
+                                             Grid.Column="1"
+                                             Lines="{Binding Lines}"
+                                             IsLeftSide="True" />
+                </Grid>
+
+                <!-- Vertical splitter -->
+                <GridSplitter Grid.Column="1"
+                              Background="{DynamicResource SplitterBrush}"
+                              ResizeDirection="Columns" />
+
+                <!-- Right panel -->
+                <Grid Grid.Column="2" ColumnDefinitions="*,12">
+                    <ScrollViewer x:Name="RightScrollViewer"
+                                  Grid.Column="0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Lines}"
+                                      Background="{DynamicResource DataGridBackground}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiffLineViewModel">
+                                    <Grid ColumnDefinitions="48,*"
+                                          Background="{Binding RightBackground}"
+                                          MinHeight="20">
+                                        <!-- Line number -->
+                                        <Border Grid.Column="0"
+                                                Background="{DynamicResource LineNumberBackground}"
+                                                BorderBrush="{DynamicResource LineNumberBorderBrush}"
+                                                BorderThickness="0,0,1,0"
+                                                Padding="4,1">
+                                            <TextBlock Text="{Binding RightLineNumberText}"
+                                                       FontFamily="Consolas,Courier New,monospace"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource LineNumberForeground}"
+                                                       TextAlignment="Right" />
+                                        </Border>
+                                        <!-- Content -->
+                                        <Border Grid.Column="1" Padding="0,1">
+                                            <TextBox Text="{Binding RightText, Mode=TwoWay}"
+                                                     FontFamily="Consolas,Courier New,monospace"
+                                                     FontSize="13"
+                                                     TextWrapping="NoWrap"
+                                                     AcceptsReturn="False"
+                                                     BorderThickness="0"
+                                                     Padding="4,0"
+                                                     MinHeight="18"
+                                                     Background="Transparent" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <controls:DiffMapControl x:Name="RightDiffMap"
+                                             Grid.Column="1"
+                                             Lines="{Binding Lines}"
+                                             IsLeftSide="False" />
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             HORIZONTAL (top-bottom) layout
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Grid RowDefinitions="*,4,*" IsVisible="{Binding IsHorizontalSplit}">
+
+            <!-- Top panel — left file -->
+            <Grid Grid.Row="0" RowDefinitions="Auto,*">
+
+                <!-- Left file header -->
+                <Border Grid.Row="0"
+                        Padding="8,4"
+                        Background="{DynamicResource PanelHeaderBackground}"
+                        BorderBrush="{DynamicResource SplitterBrush}"
+                        BorderThickness="0,0,0,1"
+                        IsVisible="{Binding LeftFileExists}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding LeftFilePath}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FilePathForeground}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   ToolTip.Tip="Click to open in file explorer"
+                                   PointerPressed="OnLeftPathPointerPressed" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding LeftStatusText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FileStatusForeground}"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Left content -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,12">
+                    <ScrollViewer x:Name="TopScrollViewer"
+                                  Grid.Column="0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Lines}"
+                                      Background="{DynamicResource DataGridBackground}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiffLineViewModel">
+                                    <Grid ColumnDefinitions="48,*"
+                                          Background="{Binding LeftBackground}"
+                                          MinHeight="20">
+                                        <Border Grid.Column="0"
+                                                Background="{DynamicResource LineNumberBackground}"
+                                                BorderBrush="{DynamicResource LineNumberBorderBrush}"
+                                                BorderThickness="0,0,1,0"
+                                                Padding="4,1">
+                                            <TextBlock Text="{Binding LeftLineNumberText}"
+                                                       FontFamily="Consolas,Courier New,monospace"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource LineNumberForeground}"
+                                                       TextAlignment="Right" />
+                                        </Border>
+                                        <Border Grid.Column="1" Padding="0,1">
+                                            <TextBox Text="{Binding LeftText, Mode=TwoWay}"
+                                                     FontFamily="Consolas,Courier New,monospace"
+                                                     FontSize="13"
+                                                     TextWrapping="NoWrap"
+                                                     AcceptsReturn="False"
+                                                     BorderThickness="0"
+                                                     Padding="4,0"
+                                                     MinHeight="18"
+                                                     Background="Transparent" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <controls:DiffMapControl x:Name="TopDiffMap"
+                                             Grid.Column="1"
+                                             Lines="{Binding Lines}"
+                                             IsLeftSide="True" />
+                </Grid>
+            </Grid>
+
+            <!-- Horizontal splitter -->
+            <GridSplitter Grid.Row="1"
                           Background="{DynamicResource SplitterBrush}"
-                          ResizeDirection="Columns" />
+                          ResizeDirection="Rows" />
 
-            <!-- Right panel -->
-            <Grid Grid.Column="2" ColumnDefinitions="*,12">
-                <ScrollViewer x:Name="RightScrollViewer"
-                              Grid.Column="0"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Lines}"
-                                  Background="{DynamicResource DataGridBackground}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DiffLineViewModel">
-                                <Grid ColumnDefinitions="48,*"
-                                      Background="{Binding RightBackground}"
-                                      MinHeight="20">
-                                    <!-- Line number -->
-                                    <Border Grid.Column="0"
-                                            Background="{DynamicResource LineNumberBackground}"
-                                            BorderBrush="{DynamicResource LineNumberBorderBrush}"
-                                            BorderThickness="0,0,1,0"
-                                            Padding="4,1">
-                                        <TextBlock Text="{Binding RightLineNumberText}"
-                                                   FontFamily="Consolas,Courier New,monospace"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource LineNumberForeground}"
-                                                   TextAlignment="Right" />
-                                    </Border>
-                                    <!-- Content -->
-                                    <Border Grid.Column="1" Padding="0,1">
-                                        <TextBox Text="{Binding RightText, Mode=TwoWay}"
-                                                 FontFamily="Consolas,Courier New,monospace"
-                                                 FontSize="13"
-                                                 TextWrapping="NoWrap"
-                                                 AcceptsReturn="False"
-                                                 BorderThickness="0"
-                                                 Padding="4,0"
-                                                 MinHeight="18"
-                                                 Background="Transparent" />
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-                <controls:DiffMapControl x:Name="RightDiffMap"
-                                         Grid.Column="1"
-                                         Lines="{Binding Lines}"
-                                         IsLeftSide="False" />
+            <!-- Bottom panel — right file -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,*">
+
+                <!-- Right file header -->
+                <Border Grid.Row="0"
+                        Padding="8,4"
+                        Background="{DynamicResource PanelHeaderBackground}"
+                        BorderBrush="{DynamicResource SplitterBrush}"
+                        BorderThickness="0,0,0,1"
+                        IsVisible="{Binding RightFileExists}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding RightFilePath}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FilePathForeground}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   ToolTip.Tip="Click to open in file explorer"
+                                   PointerPressed="OnRightPathPointerPressed" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding RightStatusText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource FileStatusForeground}"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Right content -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,12">
+                    <ScrollViewer x:Name="BottomScrollViewer"
+                                  Grid.Column="0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Lines}"
+                                      Background="{DynamicResource DataGridBackground}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiffLineViewModel">
+                                    <Grid ColumnDefinitions="48,*"
+                                          Background="{Binding RightBackground}"
+                                          MinHeight="20">
+                                        <Border Grid.Column="0"
+                                                Background="{DynamicResource LineNumberBackground}"
+                                                BorderBrush="{DynamicResource LineNumberBorderBrush}"
+                                                BorderThickness="0,0,1,0"
+                                                Padding="4,1">
+                                            <TextBlock Text="{Binding RightLineNumberText}"
+                                                       FontFamily="Consolas,Courier New,monospace"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource LineNumberForeground}"
+                                                       TextAlignment="Right" />
+                                        </Border>
+                                        <Border Grid.Column="1" Padding="0,1">
+                                            <TextBox Text="{Binding RightText, Mode=TwoWay}"
+                                                     FontFamily="Consolas,Courier New,monospace"
+                                                     FontSize="13"
+                                                     TextWrapping="NoWrap"
+                                                     AcceptsReturn="False"
+                                                     BorderThickness="0"
+                                                     Padding="4,0"
+                                                     MinHeight="18"
+                                                     Background="Transparent" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <controls:DiffMapControl x:Name="BottomDiffMap"
+                                             Grid.Column="1"
+                                             Lines="{Binding Lines}"
+                                             IsLeftSide="False" />
+                </Grid>
             </Grid>
         </Grid>
-    </Grid>
+
+    </Panel>
 </UserControl>
+

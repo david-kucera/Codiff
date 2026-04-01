@@ -23,7 +23,7 @@ public partial class FileDiffView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        InitializeScrollSync();
+        RewireScrollSync();
         ThemeService.Instance.ThemeChanged += OnThemeChanged;
     }
 
@@ -68,27 +68,40 @@ public partial class FileDiffView : UserControl
             vm.OpenInExplorerCommand.Execute(vm.RightFilePath);
     }
 
-    private void InitializeScrollSync()
+    // ── Scroll sync ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// (Re-)wires the active scroll viewers based on the current split orientation.
+    /// In vertical mode the Left/Right viewers are used; in horizontal mode Top/Bottom.
+    /// </summary>
+    private void RewireScrollSync()
     {
-        _leftScrollViewer = this.FindControl<ScrollViewer>("LeftScrollViewer");
-        _rightScrollViewer = this.FindControl<ScrollViewer>("RightScrollViewer");
-        _leftDiffMap = this.FindControl<DiffMapControl>("LeftDiffMap");
-        _rightDiffMap = this.FindControl<DiffMapControl>("RightDiffMap");
+        // Unsubscribe from old viewers
+        if (_leftScrollViewer != null) _leftScrollViewer.ScrollChanged -= OnLeftScrollChanged;
+        if (_rightScrollViewer != null) _rightScrollViewer.ScrollChanged -= OnRightScrollChanged;
 
-        if (_leftScrollViewer != null)
-            _leftScrollViewer.ScrollChanged += OnLeftScrollChanged;
+        bool isHorizontal = DataContext is FileDiffViewModel { IsHorizontalSplit: true };
 
-        if (_rightScrollViewer != null)
-            _rightScrollViewer.ScrollChanged += OnRightScrollChanged;
+        if (isHorizontal)
+        {
+            _leftScrollViewer  = this.FindControl<ScrollViewer>("TopScrollViewer");
+            _rightScrollViewer = this.FindControl<ScrollViewer>("BottomScrollViewer");
+            _leftDiffMap  = this.FindControl<DiffMapControl>("TopDiffMap");
+            _rightDiffMap = this.FindControl<DiffMapControl>("BottomDiffMap");
+        }
+        else
+        {
+            _leftScrollViewer  = this.FindControl<ScrollViewer>("LeftScrollViewer");
+            _rightScrollViewer = this.FindControl<ScrollViewer>("RightScrollViewer");
+            _leftDiffMap  = this.FindControl<DiffMapControl>("LeftDiffMap");
+            _rightDiffMap = this.FindControl<DiffMapControl>("RightDiffMap");
+        }
 
-        if (_leftDiffMap != null)
-            _leftDiffMap.TargetScrollViewer = _leftScrollViewer;
+        if (_leftScrollViewer != null)  _leftScrollViewer.ScrollChanged  += OnLeftScrollChanged;
+        if (_rightScrollViewer != null) _rightScrollViewer.ScrollChanged += OnRightScrollChanged;
 
-        if (_rightDiffMap != null)
-            _rightDiffMap.TargetScrollViewer = _rightScrollViewer;
-
-        if (DataContext is FileDiffViewModel vm)
-            SubscribeToViewModel(vm);
+        if (_leftDiffMap != null)  _leftDiffMap.TargetScrollViewer  = _leftScrollViewer;
+        if (_rightDiffMap != null) _rightDiffMap.TargetScrollViewer = _rightScrollViewer;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -99,10 +112,21 @@ public partial class FileDiffView : UserControl
             SubscribeToViewModel(vm);
     }
 
+    private FileDiffViewModel? _subscribedViewModel;
+
     private void SubscribeToViewModel(FileDiffViewModel vm)
     {
-        vm.PropertyChanged -= OnViewModelPropertyChanged;
+        if (vm == _subscribedViewModel) return;
+
+        if (_subscribedViewModel != null)
+        {
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.CopyAsTextRequested -= OnCopyAsTextRequested;
+        }
+
+        _subscribedViewModel = vm;
         vm.PropertyChanged += OnViewModelPropertyChanged;
+        vm.CopyAsTextRequested += OnCopyAsTextRequested;
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -111,6 +135,10 @@ public partial class FileDiffView : UserControl
         {
             if (sender is FileDiffViewModel vm)
                 ScrollToOffset(vm.ScrollOffset);
+        }
+        else if (e.PropertyName == nameof(FileDiffViewModel.IsHorizontalSplit))
+        {
+            RewireScrollSync();
         }
     }
 
@@ -173,4 +201,13 @@ public partial class FileDiffView : UserControl
             _isSyncing = false;
         }
     }
+
+    // ── Clipboard ──────────────────────────────────────────────────────────
+
+    private async void OnCopyAsTextRequested(string text)
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(text);
+    }
 }
+

@@ -10,7 +10,20 @@ namespace Codiff.ViewModels;
 
 public partial class FileDiffViewModel : ObservableObject
 {
+    /// <summary>
+    /// Shared split-orientation preference.  Updated whenever any instance
+    /// changes <see cref="IsHorizontalSplit"/>; new instances are initialised
+    /// from it so that popup windows inherit the user's current preference.
+    /// </summary>
+    private static bool s_preferHorizontalSplit;
+
     private readonly FileDiffService _diffService = new();
+
+    public FileDiffViewModel()
+    {
+        // Start with the last-used orientation preference.
+        _isHorizontalSplit = s_preferHorizontalSplit;
+    }
 
     [ObservableProperty]
     private ObservableCollection<DiffLineViewModel> _lines = new();
@@ -37,10 +50,26 @@ public partial class FileDiffViewModel : ObservableObject
     private string _rightStatusText = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CopyAsTextCommand))]
     private bool _leftFileExists;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CopyAsTextCommand))]
     private bool _rightFileExists;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SplitterOrientationMenuHeader))]
+    [NotifyPropertyChangedFor(nameof(IsVerticalSplit))]
+    private bool _isHorizontalSplit;
+
+    public string SplitterOrientationMenuHeader =>
+        IsHorizontalSplit ? "Toggle to Vertical Split" : "Toggle to Horizontal Split";
+
+    /// <summary>True when the split is vertical (side-by-side). Inverse of <see cref="IsHorizontalSplit"/>.</summary>
+    public bool IsVerticalSplit => !IsHorizontalSplit;
+
+    /// <summary>Raised when the view should copy the given text to the clipboard.</summary>
+    public event Action<string>? CopyAsTextRequested;
 
     private bool _isLeftModified;
     private bool _isRightModified;
@@ -92,10 +121,8 @@ public partial class FileDiffViewModel : ObservableObject
         LeftStatusText = string.Empty;
         RightStatusText = string.Empty;
 
-        _leftFileExists = result.LeftFileExists;
-        _rightFileExists = result.RightFileExists;
-        OnPropertyChanged("LeftFileExists");
-        OnPropertyChanged("RightFileExists");
+        LeftFileExists = result.LeftFileExists;
+        RightFileExists = result.RightFileExists;
 
         _suppressTextEdited = false;
 
@@ -175,6 +202,22 @@ public partial class FileDiffViewModel : ObservableObject
         }
         return string.Join(Environment.NewLine, textLines);
     }
+
+    [RelayCommand]
+    private void ToggleSplitterOrientation() => IsHorizontalSplit = !IsHorizontalSplit;
+
+    partial void OnIsHorizontalSplitChanged(bool value) => s_preferHorizontalSplit = value;
+
+    [RelayCommand(CanExecute = nameof(CanCopyAsText))]
+    private void CopyAsText()
+    {
+        var text = ReconstructText(isLeft: true);
+        if (string.IsNullOrEmpty(text))
+            text = ReconstructText(isLeft: false);
+        CopyAsTextRequested?.Invoke(text);
+    }
+
+    private bool CanCopyAsText() => LeftFileExists || RightFileExists;
 
     [RelayCommand]
     private void OpenInExplorer(string? filePath)

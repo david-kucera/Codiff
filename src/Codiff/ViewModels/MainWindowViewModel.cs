@@ -36,6 +36,7 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel()
     {
         FolderDiffViewModel.FileEntrySelected += OnFileEntrySelected;
+        FolderDiffViewModel.PropertyChanged   += OnFolderDiffViewModelPropertyChanged;
     }
 
     /// <summary>
@@ -136,6 +137,36 @@ public partial class MainWindowViewModel : ObservableObject
         else if (!string.IsNullOrEmpty(rightPath))
         {
             FileDiffViewModel.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
+        }
+    }
+
+    /// <summary>
+    /// When a file node is single-clicked in the folder view, load its content
+    /// into <see cref="FileDiffViewModel"/> so that "Copy as Text" in the main
+    /// menu is enabled without needing to open the full diff window.
+    /// </summary>
+    private void OnFolderDiffViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(FolderDiffViewModel.SelectedNode)) return;
+
+        var node = FolderDiffViewModel.SelectedNode;
+        if (node == null || !node.IsFile) return;
+
+        var left  = node.LeftFullPath  ?? string.Empty;
+        var right = node.RightFullPath ?? string.Empty;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(left) && !string.IsNullOrEmpty(right))
+                FileDiffViewModel.LoadFiles(left, right);
+            else if (!string.IsNullOrEmpty(left))
+                FileDiffViewModel.LoadTexts(File.ReadAllText(left), string.Empty, left, string.Empty);
+            else if (!string.IsNullOrEmpty(right))
+                FileDiffViewModel.LoadTexts(string.Empty, File.ReadAllText(right), string.Empty, right);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] Failed to preview selected file: {ex.Message}");
         }
     }
 
