@@ -160,11 +160,19 @@ public partial class FolderNodeViewModel : ObservableObject
     {
         var iconService = IconExtractorServiceFactory.Instance;
 
-        // Load icons asynchronously to avoid blocking the UI
+        // For folders, load icons synchronously since they use a cached generic icon
+        // This ensures folder icons are immediately available when the DataGrid renders
+        if (!IsFile)
+        {
+            LeftIcon = iconService.GetFolderIcon(LeftFullPath ?? "");
+            RightIcon = iconService.GetFolderIcon(RightFullPath ?? "");
+            return;
+        }
+
+        // For files, load icons asynchronously to avoid blocking the UI
         Task.Run(() =>
         {
-            // For files, use the actual path; for folders, use generic icon even if path is null
-            if (IsFile && !string.IsNullOrEmpty(LeftFullPath))
+            if (!string.IsNullOrEmpty(LeftFullPath))
             {
                 var icon = iconService.GetFileIcon(LeftFullPath);
                 if (icon != null)
@@ -172,28 +180,10 @@ public partial class FolderNodeViewModel : ObservableObject
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => LeftIcon = icon);
                 }
             }
-            else if (!IsFile)
-            {
-                // For folders, always load generic folder icon
-                var icon = iconService.GetFolderIcon(LeftFullPath ?? "");
-                if (icon != null)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => LeftIcon = icon);
-                }
-            }
 
-            if (IsFile && !string.IsNullOrEmpty(RightFullPath))
+            if (!string.IsNullOrEmpty(RightFullPath))
             {
                 var icon = iconService.GetFileIcon(RightFullPath);
-                if (icon != null)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => RightIcon = icon);
-                }
-            }
-            else if (!IsFile)
-            {
-                // For folders, always load generic folder icon
-                var icon = iconService.GetFolderIcon(RightFullPath ?? "");
                 if (icon != null)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => RightIcon = icon);

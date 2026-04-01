@@ -12,7 +12,7 @@
 
     <DockPanel>
         <!-- Menu bar -->
-        <Menu DockPanel.Dock="Top">
+        <Menu DockPanel.Dock="Top" x:Name="MainMenu">
             <MenuItem Header="Directories">
                 <MenuItem Header="New Comparison"
                           Command="{Binding OpenFoldersCommand}">
