@@ -10,7 +10,20 @@ namespace Codiff.ViewModels;
 
 public partial class FileDiffViewModel : ObservableObject
 {
+    /// <summary>
+    /// Shared split-orientation preference.  Updated whenever any instance
+    /// changes <see cref="IsHorizontalSplit"/>; new instances are initialised
+    /// from it so that popup windows inherit the user's current preference.
+    /// </summary>
+    private static bool s_preferHorizontalSplit;
+
     private readonly FileDiffService _diffService = new();
+
+    public FileDiffViewModel()
+    {
+        // Start with the last-used orientation preference.
+        _isHorizontalSplit = s_preferHorizontalSplit;
+    }
 
     [ObservableProperty]
     private ObservableCollection<DiffLineViewModel> _lines = new();
@@ -192,6 +205,8 @@ public partial class FileDiffViewModel : ObservableObject
 
     [RelayCommand]
     private void ToggleSplitterOrientation() => IsHorizontalSplit = !IsHorizontalSplit;
+
+    partial void OnIsHorizontalSplitChanged(bool value) => s_preferHorizontalSplit = value;
 
     [RelayCommand(CanExecute = nameof(CanCopyAsText))]
     private void CopyAsText()
