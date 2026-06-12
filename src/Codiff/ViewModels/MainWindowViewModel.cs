@@ -83,8 +83,8 @@ public partial class MainWindowViewModel : ObservableObject
         {
             IsFolderViewVisible = true;
             FolderDiffViewModel.IsVisible = true;
-            FolderDiffViewModel.LoadFolders(left, right);
             AddRecentComparison(isFolder: true, left, right);
+            await FolderDiffViewModel.LoadFoldersAsync(left, right);
         }
     }
 
@@ -102,7 +102,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             IsFolderViewVisible = true;
             FolderDiffViewModel.IsVisible = true;
-            FolderDiffViewModel.LoadFolders(entry.LeftPath, entry.RightPath);
+            _ = FolderDiffViewModel.LoadFoldersAsync(entry.LeftPath, entry.RightPath);
         }
         else
         {

@@ -11,6 +11,7 @@
         </Style>
     </UserControl.Styles>
 
+    <Grid>
     <DockPanel>
         <!-- Path labels -->
         <Grid DockPanel.Dock="Top"
@@ -398,4 +399,33 @@
 
         </Grid>
     </DockPanel>
+
+    <!-- Loading overlay shown while a folder comparison is running -->
+    <Border IsVisible="{Binding IsLoading}"
+            Background="#66000000">
+        <Border Background="{DynamicResource DataGridBackground}"
+                BorderBrush="{DynamicResource LegendBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="24,20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <StackPanel Spacing="12" Width="300">
+                <TextBlock Text="Comparing folders"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <ProgressBar Minimum="0"
+                             Maximum="100"
+                             Height="8"
+                             Value="{Binding LoadingProgress}"
+                             IsIndeterminate="{Binding IsProgressIndeterminate}" />
+                <TextBlock Text="{Binding LoadingText}"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource CellTextForeground}" />
+            </StackPanel>
+        </Border>
+    </Border>
+    </Grid>
 </UserControl>

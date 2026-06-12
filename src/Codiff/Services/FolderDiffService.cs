@@ -3,6 +3,12 @@ using Codiff.Models;
 namespace Codiff.Services;
 
 /// <summary>
+/// Progress snapshot reported while a folder diff is running.
+/// <see cref="Total"/> is 0 during the initial scanning phase (count unknown).
+/// </summary>
+public readonly record struct FolderDiffProgress(string Phase, int Done, int Total);
+
+/// <summary>
 /// Provides functionality to compare the contents of two folders and identify differences between their files.
 /// </summary>
 /// <remarks>This service determines which files are identical, modified, or present only in one of the specified
@@ -11,16 +17,22 @@ namespace Codiff.Services;
 public class FolderDiffService
 {
     #region Public functions
-    public FolderDiffResult DiffFolders(string leftFolder, string rightFolder)
+    public FolderDiffResult DiffFolders(string leftFolder, string rightFolder,
+        IProgress<FolderDiffProgress>? progress = null)
     {
         var entries = new List<FolderDiffEntry>();
 
+        progress?.Report(new FolderDiffProgress("Scanning folders…", 0, 0));
         var leftFiles = GetRelativePaths(leftFolder);
         var rightFiles = GetRelativePaths(rightFolder);
 
         var allPaths = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         allPaths.UnionWith(leftFiles.Keys);
         allPaths.UnionWith(rightFiles.Keys);
+
+        int total = allPaths.Count;
+        int done = 0;
+        progress?.Report(new FolderDiffProgress("Comparing files…", 0, total));
 
         foreach (var relativePath in allPaths)
         {
@@ -50,6 +62,11 @@ public class FolderDiffService
                 LeftFullPath = inLeft ? leftFull : null,
                 RightFullPath = inRight ? rightFull : null
             });
+
+            done++;
+            // Throttle reports so the UI thread isn't flooded on huge folders.
+            if (done % 50 == 0 || done == total)
+                progress?.Report(new FolderDiffProgress("Comparing files…", done, total));
         }
 
         return new FolderDiffResult

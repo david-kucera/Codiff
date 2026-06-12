@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -199,30 +200,30 @@ public partial class FolderDiffViewModel : ObservableObject
     // ── Directory operations ───────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanRecompare))]
-    private void Recompare()
+    private async Task Recompare()
     {
         if (!string.IsNullOrEmpty(LeftFolderPath) && !string.IsNullOrEmpty(RightFolderPath))
-            LoadFolders(LeftFolderPath, RightFolderPath);
+            await LoadFoldersAsync(LeftFolderPath, RightFolderPath);
     }
 
     private bool CanRecompare() =>
         !string.IsNullOrEmpty(LeftFolderPath) && !string.IsNullOrEmpty(RightFolderPath);
 
     [RelayCommand(CanExecute = nameof(CanRecompare))]
-    private void SwapDirectories()
+    private async Task SwapDirectories()
     {
         var left = LeftFolderPath;
         var right = RightFolderPath;
-        LoadFolders(right, left);
+        await LoadFoldersAsync(right, left);
     }
 
     [RelayCommand(CanExecute = nameof(CanUpOneLevel))]
-    private void UpOneLevel()
+    private async Task UpOneLevel()
     {
         var leftParent = Directory.GetParent(LeftFolderPath)?.FullName;
         var rightParent = Directory.GetParent(RightFolderPath)?.FullName;
         if (leftParent != null && rightParent != null)
-            LoadFolders(leftParent, rightParent);
+            await LoadFoldersAsync(leftParent, rightParent);
     }
 
     private bool CanUpOneLevel()
@@ -294,7 +295,7 @@ public partial class FolderDiffViewModel : ObservableObject
             return;
         }
 
-        LoadFolders(LeftFolderPath, RightFolderPath);
+        await LoadFoldersAsync(LeftFolderPath, RightFolderPath);
     }
 
     [RelayCommand(CanExecute = nameof(CanActOnSelection))]
@@ -340,7 +341,7 @@ public partial class FolderDiffViewModel : ObservableObject
         if (errors.Count > 0)
             DeleteErrorOccurred?.Invoke("Some items could not be deleted:\n" + string.Join("\n", errors));
 
-        LoadFolders(LeftFolderPath, RightFolderPath);
+        await LoadFoldersAsync(LeftFolderPath, RightFolderPath);
     }
 
     /// <summary>
@@ -443,13 +444,58 @@ public partial class FolderDiffViewModel : ObservableObject
     // the corresponding folder on the opposite side.
     public event Action<FolderNodeViewModel>? FolderOpened;
 
-    public void LoadFolders(string leftFolder, string rightFolder)
+    // ── Loading progress ──────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private string _loadingText = string.Empty;
+
+    [ObservableProperty]
+    private double _loadingProgress;
+
+    [ObservableProperty]
+    private bool _isProgressIndeterminate = true;
+
+    public async Task LoadFoldersAsync(string leftFolder, string rightFolder)
     {
+        if (IsLoading) return;
+
         SelectedNode = null;
         LeftFolderPath = leftFolder;
         RightFolderPath = rightFolder;
 
-        var result = _folderService.DiffFolders(leftFolder, rightFolder);
+        IsLoading = true;
+        IsProgressIndeterminate = true;
+        LoadingProgress = 0;
+        LoadingText = "Scanning folders…";
+
+        FolderDiffResult result;
+        try
+        {
+            // Progress<T> marshals reports back to the UI thread.
+            var progress = new Progress<FolderDiffProgress>(p =>
+            {
+                if (p.Total > 0)
+                {
+                    IsProgressIndeterminate = false;
+                    LoadingProgress = 100.0 * p.Done / p.Total;
+                    LoadingText = $"Comparing files… {p.Done:N0} / {p.Total:N0}";
+                }
+                else
+                {
+                    IsProgressIndeterminate = true;
+                    LoadingText = p.Phase;
+                }
+            });
+
+            result = await Task.Run(() => _folderService.DiffFolders(leftFolder, rightFolder, progress));
+        }
+        finally
+        {
+            IsLoading = false;
+        }
 
         Entries.Clear();
         foreach (var entry in result.Entries)
