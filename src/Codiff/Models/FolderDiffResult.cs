@@ -15,6 +15,18 @@ public class FolderDiffEntry
     public string? LeftFullPath { get; set; }
     public string? RightFullPath { get; set; }
 
+    /// <summary>File size captured during the scan (<see langword="null"/> when not present on this side).</summary>
+    public long? LeftSize { get; set; }
+
+    /// <summary>File size captured during the scan (<see langword="null"/> when not present on this side).</summary>
+    public long? RightSize { get; set; }
+
+    /// <summary>Local last-write time captured during the scan (<see langword="null"/> when not present on this side).</summary>
+    public DateTime? LeftLastWriteTime { get; set; }
+
+    /// <summary>Local last-write time captured during the scan (<see langword="null"/> when not present on this side).</summary>
+    public DateTime? RightLastWriteTime { get; set; }
+
     public string StatusIcon => Status switch
     {
         FileStatus.Identical => "=",

@@ -1,4 +1,7 @@
+using System.Buffers;
+using System.IO.Enumeration;
 using Codiff.Models;
+using Microsoft.Win32.SafeHandles;
 
 namespace Codiff.Services;
 
@@ -16,33 +19,55 @@ public readonly record struct FolderDiffProgress(string Phase, int Done, int Tot
 /// synchronization or backup validation.</remarks>
 public class FolderDiffService
 {
+    #region Class members
+    private const int CompareBufferSize = 64 * 1024;
+
+    // File contents are compared on a few threads at once: it hides I/O latency (SSDs, network
+    // shares) without flooding a single spinning disk with concurrent reads.
+    private const int MaxParallelComparisons = 4;
+
+    // Same matching as Directory.GetFiles(folder, "*", SearchOption.AllDirectories) (hidden and system
+    // files included), except that unreadable subdirectories are skipped instead of failing the scan.
+    private static readonly EnumerationOptions ScanOptions = new()
+    {
+        MatchType = MatchType.Win32,
+        AttributesToSkip = 0,
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = true
+    };
+    #endregion // Class members
+
     #region Public functions
     public FolderDiffResult DiffFolders(string leftFolder, string rightFolder,
         IProgress<FolderDiffProgress>? progress = null)
     {
-        var entries = new List<FolderDiffEntry>();
-
         progress?.Report(new FolderDiffProgress("Scanning folders…", 0, 0));
-        var leftFiles = GetRelativePaths(leftFolder);
-        var rightFiles = GetRelativePaths(rightFolder);
+        var leftFiles = GetFiles(leftFolder);
+        var rightFiles = GetFiles(rightFolder);
 
         var allPaths = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         allPaths.UnionWith(leftFiles.Keys);
         allPaths.UnionWith(rightFiles.Keys);
+        var paths = allPaths.ToArray();
 
-        int total = allPaths.Count;
+        int total = paths.Length;
         int done = 0;
+        int lastReported = 0;
+        var progressLock = new object();
         progress?.Report(new FolderDiffProgress("Comparing files…", 0, total));
 
-        foreach (var relativePath in allPaths)
+        var entries = new FolderDiffEntry[total];
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = MaxParallelComparisons };
+        Parallel.For(0, total, parallelOptions, i =>
         {
-            bool inLeft = leftFiles.TryGetValue(relativePath, out var leftFull);
-            bool inRight = rightFiles.TryGetValue(relativePath, out var rightFull);
+            var relativePath = paths[i];
+            bool inLeft = leftFiles.TryGetValue(relativePath, out var left);
+            bool inRight = rightFiles.TryGetValue(relativePath, out var right);
 
             FileStatus status;
             if (inLeft && inRight)
             {
-                status = AreFilesIdentical(leftFull!, rightFull!)
+                status = AreFilesIdentical(left, right)
                     ? FileStatus.Identical
                     : FileStatus.Modified;
             }
@@ -55,19 +80,33 @@ public class FolderDiffService
                 status = FileStatus.OnlyInRight;
             }
 
-            entries.Add(new FolderDiffEntry
+            entries[i] = new FolderDiffEntry
             {
                 RelativePath = relativePath,
                 Status = status,
-                LeftFullPath = inLeft ? leftFull : null,
-                RightFullPath = inRight ? rightFull : null
-            });
+                LeftFullPath = inLeft ? left.FullPath : null,
+                RightFullPath = inRight ? right.FullPath : null,
+                LeftSize = inLeft ? left.Length : null,
+                RightSize = inRight ? right.Length : null,
+                LeftLastWriteTime = inLeft ? left.LastWriteTime : null,
+                RightLastWriteTime = inRight ? right.LastWriteTime : null
+            };
 
-            done++;
-            // Throttle reports so the UI thread isn't flooded on huge folders.
-            if (done % 50 == 0 || done == total)
-                progress?.Report(new FolderDiffProgress("Comparing files…", done, total));
-        }
+            int n = Interlocked.Increment(ref done);
+            // Throttle reports so the UI thread isn't flooded on huge folders, and keep them in
+            // increasing order even though items finish on several threads.
+            if (progress != null && (n % 50 == 0 || n == total))
+            {
+                lock (progressLock)
+                {
+                    if (n > lastReported)
+                    {
+                        lastReported = n;
+                        progress.Report(new FolderDiffProgress("Comparing files…", n, total));
+                    }
+                }
+            }
+        });
 
         return new FolderDiffResult
         {
@@ -79,43 +118,95 @@ public class FolderDiffService
     #endregion // Public functions
 
     #region Private functions
-    private static Dictionary<string, string> GetRelativePaths(string folder)
+    /// <summary>A file found by the scan, with the metadata the enumeration provides for free.</summary>
+    private readonly record struct ScannedFile(string FullPath, long Length, DateTime LastWriteTime);
+
+    private static Dictionary<string, ScannedFile> GetFiles(string folder)
     {
-        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, ScannedFile>(StringComparer.OrdinalIgnoreCase);
         if (!Directory.Exists(folder)) return result;
 
-        foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
+        // Size and timestamp come with the directory entry itself (Windows) or from a single
+        // stat call (Unix), so nothing has to touch the file again just to display them.
+        var files = new FileSystemEnumerable<ScannedFile>(
+            folder,
+            (ref FileSystemEntry entry) => new ScannedFile(
+                entry.ToSpecifiedFullPath(),
+                entry.Length,
+                entry.LastWriteTimeUtc.LocalDateTime),
+            ScanOptions)
         {
-            var relative = Path.GetRelativePath(folder, file);
+            ShouldIncludePredicate = (ref FileSystemEntry entry) => !entry.IsDirectory
+        };
+
+        foreach (var file in files)
+        {
+            var relative = Path.GetRelativePath(folder, file.FullPath);
             result[relative] = file;
         }
         return result;
     }
 
-    private static bool AreFilesIdentical(string leftPath, string rightPath)
+    private static bool AreFilesIdentical(ScannedFile left, ScannedFile right)
     {
-        var leftInfo = new FileInfo(leftPath);
-        var rightInfo = new FileInfo(rightPath);
-
-        if (leftInfo.Length != rightInfo.Length)
+        if (left.Length != right.Length)
             return false;
 
-        using var leftStream = File.OpenRead(leftPath);
-        using var rightStream = File.OpenRead(rightPath);
-
-        var buffer1 = new byte[4096];
-        var buffer2 = new byte[4096];
-
-        while (true)
+        byte[]? buffer1 = null;
+        byte[]? buffer2 = null;
+        try
         {
-            int read1 = leftStream.Read(buffer1, 0, buffer1.Length);
-            int read2 = rightStream.Read(buffer2, 0, buffer2.Length);
+            // FileShare.ReadWrite | Delete: files that another program keeps open for writing
+            // (logs, databases) can still be compared.
+            using var leftHandle = OpenForCompare(left.FullPath);
+            using var rightHandle = OpenForCompare(right.FullPath);
 
-            if (read1 != read2) return false;
-            if (read1 == 0) return true;
-            if (!buffer1.AsSpan(0, read1).SequenceEqual(buffer2.AsSpan(0, read2)))
-                return false;
+            buffer1 = ArrayPool<byte>.Shared.Rent(CompareBufferSize);
+            buffer2 = ArrayPool<byte>.Shared.Rent(CompareBufferSize);
+
+            long offset = 0;
+            while (true)
+            {
+                int read1 = ReadBlock(leftHandle, buffer1, offset);
+                int read2 = ReadBlock(rightHandle, buffer2, offset);
+
+                if (read1 != read2) return false;
+                if (read1 == 0) return true;
+                if (!buffer1.AsSpan(0, read1).SequenceEqual(buffer2.AsSpan(0, read2)))
+                    return false;
+
+                offset += read1;
+            }
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            // A file that cannot be read cannot be confirmed identical; show it as modified
+            // instead of failing the whole folder comparison.
+            System.Diagnostics.Debug.WriteLine($"[FolderDiffService] Compare failed for '{left.FullPath}': {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (buffer1 != null) ArrayPool<byte>.Shared.Return(buffer1);
+            if (buffer2 != null) ArrayPool<byte>.Shared.Return(buffer2);
+        }
+    }
+
+    private static SafeFileHandle OpenForCompare(string path) =>
+        File.OpenHandle(path, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete, FileOptions.SequentialScan);
+
+    /// <summary>Reads until the block is full or the end of the file is reached (a single read may return less).</summary>
+    private static int ReadBlock(SafeFileHandle handle, byte[] buffer, long offset)
+    {
+        int total = 0;
+        while (total < CompareBufferSize)
+        {
+            int read = RandomAccess.Read(handle, buffer.AsSpan(total, CompareBufferSize - total), offset + total);
+            if (read == 0) break;
+            total += read;
+        }
+        return total;
     }
     #endregion // Private functions
 }

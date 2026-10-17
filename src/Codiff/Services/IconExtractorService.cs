@@ -19,9 +19,6 @@ public class WindowsIconExtractorService : IIconExtractorService
     private const string DefaultFolderIconKey = "folder";
     private const string DefaultFileIconKey = "file";
 
-    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-    private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, uint nIconIndex);
-
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(IntPtr hIcon);
 
@@ -47,6 +44,9 @@ public class WindowsIconExtractorService : IIconExtractorService
     #region Class members
     private static WindowsIconExtractorService? _instance;
     private static readonly object _lock = new();
+
+    // Icons are requested from background threads, so the cache is guarded by a lock.
+    private static readonly object _cacheLock = new();
     private static readonly Dictionary<string, Bitmap?> IconCache = new();
     #endregion // Class members
 
@@ -71,12 +71,15 @@ public class WindowsIconExtractorService : IIconExtractorService
         try
         {
             var cacheKey = GetCacheKey(filePath, isDirectory: false);
-            if (IconCache.TryGetValue(cacheKey, out var cachedIcon))
-                return cachedIcon;
+            lock (_cacheLock)
+            {
+                if (IconCache.TryGetValue(cacheKey, out var cachedIcon))
+                    return cachedIcon;
 
-            var bitmap = ExtractIconForPath(filePath, isDirectory: false);
-            IconCache[cacheKey] = bitmap;
-            return bitmap;
+                var bitmap = ExtractIconForPath(filePath, isDirectory: false);
+                IconCache[cacheKey] = bitmap;
+                return bitmap;
+            }
         }
         catch
         {
@@ -89,12 +92,15 @@ public class WindowsIconExtractorService : IIconExtractorService
         try
         {
             var cacheKey = DefaultFolderIconKey;
-            if (IconCache.TryGetValue(cacheKey, out var cachedIcon))
-                return cachedIcon;
+            lock (_cacheLock)
+            {
+                if (IconCache.TryGetValue(cacheKey, out var cachedIcon))
+                    return cachedIcon;
 
-            var bitmap = ExtractGenericFolderIcon();
-            IconCache[cacheKey] = bitmap;
-            return bitmap;
+                var bitmap = ExtractGenericFolderIcon();
+                IconCache[cacheKey] = bitmap;
+                return bitmap;
+            }
         }
         catch (Exception ex)
         {
@@ -105,11 +111,14 @@ public class WindowsIconExtractorService : IIconExtractorService
 
     public void ClearCache()
     {
-        foreach (var icon in IconCache.Values)
+        lock (_cacheLock)
         {
-            icon?.Dispose();
+            foreach (var icon in IconCache.Values)
+            {
+                icon?.Dispose();
+            }
+            IconCache.Clear();
         }
-        IconCache.Clear();
     }
     #endregion // Public functions
 
@@ -193,10 +202,8 @@ public class WindowsIconExtractorService : IIconExtractorService
             bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             ms.Seek(0, SeekOrigin.Begin);
 
-            byte[] imageData = ms.ToArray();
-            var memoryStream = new MemoryStream(imageData);
-
-            return new Bitmap(memoryStream);
+            // The Avalonia bitmap decodes the stream in its constructor, so no copy is needed.
+            return new Bitmap(ms);
         }
         catch (Exception ex)
         {

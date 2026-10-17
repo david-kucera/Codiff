@@ -1,5 +1,4 @@
-using System.Collections.ObjectModel;
-using Codiff.Models;
+using Codiff.Collections;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,7 +23,7 @@ public partial class MainWindowViewModel : ObservableObject
     public string ThemeMenuHeader => IsDarkTheme ? "Switch to Light Theme" : "Switch to Dark Theme";
 
     /// <summary>Recent comparisons shown in the "Recent Files/Directories" menu.</summary>
-    public ObservableCollection<RecentComparisonViewModel> RecentComparisons { get; } = [];
+    public BulkObservableCollection<RecentComparisonViewModel> RecentComparisons { get; } = new();
 
     /// <summary>True when there is at least one recent comparison entry.</summary>
     public bool HasRecentComparisons => RecentComparisons.Count > 0;
@@ -43,13 +42,7 @@ public partial class MainWindowViewModel : ObservableObject
     /// Populates <see cref="RecentComparisons"/> from the persisted config.
     /// Call once after <see cref="ConfigService.Instance"/> has been loaded.
     /// </summary>
-    public void LoadFromConfig()
-    {
-        RecentComparisons.Clear();
-        foreach (var entry in ConfigService.Instance.Config.RecentComparisons)
-            RecentComparisons.Add(new RecentComparisonViewModel(entry, OpenRecentComparison));
-        OnPropertyChanged(nameof(HasRecentComparisons));
-    }
+    public void LoadFromConfig() => RefreshRecentComparisons();
 
     [RelayCommand]
     private void Exit() => ExitApplication?.Invoke();
@@ -68,8 +61,8 @@ public partial class MainWindowViewModel : ObservableObject
         var (left, right) = await OpenFilesDialog();
         if (left != null && right != null)
         {
-            IsFolderViewVisible = false;
             FileDiffViewModel.LoadFiles(left, right);
+            IsFolderViewVisible = false;
             AddRecentComparison(isFolder: false, left, right);
         }
     }
@@ -82,7 +75,6 @@ public partial class MainWindowViewModel : ObservableObject
         if (left != null && right != null)
         {
             IsFolderViewVisible = true;
-            FolderDiffViewModel.IsVisible = true;
             AddRecentComparison(isFolder: true, left, right);
             await FolderDiffViewModel.LoadFoldersAsync(left, right);
         }
@@ -101,13 +93,12 @@ public partial class MainWindowViewModel : ObservableObject
         if (entry.IsFolder)
         {
             IsFolderViewVisible = true;
-            FolderDiffViewModel.IsVisible = true;
             _ = FolderDiffViewModel.LoadFoldersAsync(entry.LeftPath, entry.RightPath);
         }
         else
         {
-            IsFolderViewVisible = false;
             FileDiffViewModel.LoadFiles(entry.LeftPath, entry.RightPath);
+            IsFolderViewVisible = false;
         }
         // Promote to top of recent list
         AddRecentComparison(entry.IsFolder, entry.LeftPath, entry.RightPath);
@@ -116,34 +107,23 @@ public partial class MainWindowViewModel : ObservableObject
     private void AddRecentComparison(bool isFolder, string leftPath, string rightPath)
     {
         ConfigService.Instance.AddRecentComparison(isFolder, leftPath, rightPath);
+        RefreshRecentComparisons();
+    }
 
-        // Rebuild the observable collection to match the new order
-        RecentComparisons.Clear();
-        foreach (var entry in ConfigService.Instance.Config.RecentComparisons)
-            RecentComparisons.Add(new RecentComparisonViewModel(entry, OpenRecentComparison));
+    /// <summary>Rebuilds <see cref="RecentComparisons"/> from the config (one change notification).</summary>
+    private void RefreshRecentComparisons()
+    {
+        RecentComparisons.ReplaceAll(ConfigService.Instance.Config.RecentComparisons
+            .Select(entry => new RecentComparisonViewModel(entry, OpenRecentComparison)));
         OnPropertyChanged(nameof(HasRecentComparisons));
     }
 
-    private void OnFileEntrySelected(string leftPath, string rightPath)
-    {
-        if (!string.IsNullOrEmpty(leftPath) && !string.IsNullOrEmpty(rightPath))
-        {
-            FileDiffViewModel.LoadFiles(leftPath, rightPath);
-        }
-        else if (!string.IsNullOrEmpty(leftPath))
-        {
-            FileDiffViewModel.LoadTexts(File.ReadAllText(leftPath), string.Empty, leftPath, string.Empty);
-        }
-        else if (!string.IsNullOrEmpty(rightPath))
-        {
-            FileDiffViewModel.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
-        }
-    }
+    private void OnFileEntrySelected(string leftPath, string rightPath) => PreviewFiles(leftPath, rightPath);
 
     /// <summary>
-    /// When a file node is single-clicked in the folder view, load its content
-    /// into <see cref="FileDiffViewModel"/> so that "Copy as Text" in the main
-    /// menu is enabled without needing to open the full diff window.
+    /// When a file node is single-clicked in the folder view, select its files in
+    /// <see cref="FileDiffViewModel"/> so that "Copy as Text" in the main menu is enabled
+    /// without needing to open the full diff window.
     /// </summary>
     private void OnFolderDiffViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -152,26 +132,23 @@ public partial class MainWindowViewModel : ObservableObject
         var node = FolderDiffViewModel.SelectedNode;
         if (node == null || !node.IsFile) return;
 
-        var left  = node.LeftFullPath  ?? string.Empty;
-        var right = node.RightFullPath ?? string.Empty;
+        PreviewFiles(node.LeftFullPath ?? string.Empty, node.RightFullPath ?? string.Empty);
+    }
 
-        try
-        {
-            if (!string.IsNullOrEmpty(left) && !string.IsNullOrEmpty(right))
-                FileDiffViewModel.LoadFiles(left, right);
-            else if (!string.IsNullOrEmpty(left))
-                FileDiffViewModel.LoadTexts(File.ReadAllText(left), string.Empty, left, string.Empty);
-            else if (!string.IsNullOrEmpty(right))
-                FileDiffViewModel.LoadTexts(string.Empty, File.ReadAllText(right), string.Empty, right);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] Failed to preview selected file: {ex.Message}");
-        }
+    /// <summary>
+    /// Selects the files without comparing them: the (hidden) file view only needs them for
+    /// "Copy as Text", so the diff is computed on demand rather than on every click in the tree.
+    /// </summary>
+    private void PreviewFiles(string leftPath, string rightPath)
+    {
+        if (string.IsNullOrEmpty(leftPath) && string.IsNullOrEmpty(rightPath)) return;
+        FileDiffViewModel.SetPendingFiles(leftPath, rightPath);
     }
 
     partial void OnIsFolderViewVisibleChanged(bool value)
     {
-        FolderDiffViewModel.IsVisible = value;
+        // The file view is being shown: compare a pending preview selection, if any.
+        if (!value)
+            FileDiffViewModel.EnsureLoaded();
     }
 }

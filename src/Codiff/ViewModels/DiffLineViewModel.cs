@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Media;
 using Codiff.Models;
 using Codiff.Services;
@@ -25,10 +26,23 @@ public partial class DiffLineViewModel : ObservableObject
     private static readonly IBrush FillerBrushDark = new SolidColorBrush(Color.Parse("#2A2A2A"));
     private static readonly IBrush NormalBrushDark = new SolidColorBrush(Color.Parse("#1E1E1E"));
 
+    // Highlights of changed words inside a line (shared by all lines)
+    private static readonly IBrush ChangedWordLeftModifiedBrush = new SolidColorBrush(Color.Parse("#FFB347"));
+    private static readonly IBrush ChangedWordRightModifiedBrush = new SolidColorBrush(Color.Parse("#66CC66"));
+    private static readonly IBrush ChangedWordAddedBrush = new SolidColorBrush(Color.Parse("#88EE88"));
+    private static readonly IBrush ChangedWordDeletedBrush = new SolidColorBrush(Color.Parse("#FF9999"));
+
+    // Reused for theme notifications, which are raised for every line at once.
+    private static readonly PropertyChangedEventArgs LeftBackgroundChangedArgs = new(nameof(LeftBackground));
+    private static readonly PropertyChangedEventArgs RightBackgroundChangedArgs = new(nameof(RightBackground));
+
     private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
     private static IBrush OneSidedContentBrush => ThemeService.Instance.IsDark ? OneSidedContentBrushDark : OneSidedContentBrushLight;
     private static IBrush FillerBrush => ThemeService.Instance.IsDark ? FillerBrushDark : FillerBrushLight;
     private static IBrush NormalBrush => ThemeService.Instance.IsDark ? NormalBrushDark : NormalBrushLight;
+
+    private IReadOnlyList<SpanViewModel>? _leftSpanViewModels;
+    private IReadOnlyList<SpanViewModel>? _rightSpanViewModels;
 
     public DiffLine Model { get; }
 
@@ -49,8 +63,6 @@ public partial class DiffLineViewModel : ObservableObject
     partial void OnLeftTextChanged(string value) => LeftTextEdited?.Invoke();
     partial void OnRightTextChanged(string value) => RightTextEdited?.Invoke();
 
-    public IBrush Background => LeftBackground;
-
     public IBrush LeftBackground => Model.LineType switch
     {
         LineType.Modified => ModifiedBrush,
@@ -67,47 +79,52 @@ public partial class DiffLineViewModel : ObservableObject
         _ => NormalBrush
     };
 
-    public IReadOnlyList<SpanViewModel> LeftSpanViewModels { get; }
-    public IReadOnlyList<SpanViewModel> RightSpanViewModels { get; }
+    /// <summary>Word-level pieces of the left text (created on first use).</summary>
+    public IReadOnlyList<SpanViewModel> LeftSpanViewModels =>
+        _leftSpanViewModels ??= BuildSpanViewModels(Model.LeftSpans, Model.LineType, isLeft: true);
 
-    public bool HasSpans => LeftSpanViewModels.Count > 1 || RightSpanViewModels.Count > 1;
+    /// <summary>Word-level pieces of the right text (created on first use).</summary>
+    public IReadOnlyList<SpanViewModel> RightSpanViewModels =>
+        _rightSpanViewModels ??= BuildSpanViewModels(Model.RightSpans, Model.LineType, isLeft: false);
+
+    public bool HasSpans => Model.LeftSpans.Count > 1 || Model.RightSpans.Count > 1;
 
     public DiffLineViewModel(DiffLine model)
     {
         Model = model;
         _leftText = model.LeftText;
         _rightText = model.RightText;
-        LeftSpanViewModels = BuildSpanViewModels(model.LeftSpans, model.LineType, isLeft: true);
-        RightSpanViewModels = BuildSpanViewModels(model.RightSpans, model.LineType, isLeft: false);
     }
 
     /// <summary>Notifies the view that all brush-bound properties have changed (called on theme toggle).</summary>
     public void NotifyThemeChanged()
     {
-        OnPropertyChanged(nameof(LeftBackground));
-        OnPropertyChanged(nameof(RightBackground));
-        OnPropertyChanged(nameof(Background));
+        OnPropertyChanged(LeftBackgroundChangedArgs);
+        OnPropertyChanged(RightBackgroundChangedArgs);
     }
 
     private static IReadOnlyList<SpanViewModel> BuildSpanViewModels(IReadOnlyList<DiffSpan> spans, LineType lineType, bool isLeft)
     {
+        if (spans.Count == 0)
+            return Array.Empty<SpanViewModel>();
+
         IBrush changedBrush = lineType switch
         {
-            LineType.Modified when isLeft => new SolidColorBrush(Color.Parse("#FFB347")),
-            LineType.Modified => new SolidColorBrush(Color.Parse("#66CC66")),
-            LineType.Added => new SolidColorBrush(Color.Parse("#88EE88")),
-            LineType.Deleted => new SolidColorBrush(Color.Parse("#FF9999")),
+            LineType.Modified when isLeft => ChangedWordLeftModifiedBrush,
+            LineType.Modified => ChangedWordRightModifiedBrush,
+            LineType.Added => ChangedWordAddedBrush,
+            LineType.Deleted => ChangedWordDeletedBrush,
             _ => Brushes.Transparent
         };
 
-        var result = new List<SpanViewModel>();
-        foreach (var span in spans)
+        var result = new SpanViewModel[spans.Count];
+        for (int i = 0; i < spans.Count; i++)
         {
-            result.Add(new SpanViewModel
+            result[i] = new SpanViewModel
             {
-                Text = span.Text,
-                Background = span.IsChanged ? changedBrush : Brushes.Transparent
-            });
+                Text = spans[i].Text,
+                Background = spans[i].IsChanged ? changedBrush : Brushes.Transparent
+            };
         }
         return result;
     }

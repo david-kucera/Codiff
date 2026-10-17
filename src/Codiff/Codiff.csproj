@@ -20,6 +20,9 @@
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.7" />
     <PackageReference Include="DiffPlex" Version="1.7.2" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <!-- Avalonia.FreeDesktop 11.2.x pulls in Tmds.DBus.Protocol 0.20.0, which has a known
+         vulnerability (GHSA-xrw6-gwf8-vvr9); 0.21.3 is the API-compatible patched release. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />

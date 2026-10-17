@@ -27,6 +27,9 @@ public class LinuxIconExtractorService : IIconExtractorService
 
     private static LinuxIconExtractorService? _instance;
     private static readonly object _lock = new();
+
+    // Icons are requested from background threads, so the cache is guarded by a lock.
+    private static readonly object _cacheLock = new();
     private static readonly Dictionary<string, Bitmap?> _iconCache = new();
 
     private readonly string[] _searchPaths;
@@ -54,16 +57,19 @@ public class LinuxIconExtractorService : IIconExtractorService
         {
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
             var cacheKey = string.IsNullOrEmpty(ext) ? DefaultFileIconKey : $"file{ext}";
-            if (_iconCache.TryGetValue(cacheKey, out var cached)) return cached;
+            lock (_cacheLock)
+            {
+                if (_iconCache.TryGetValue(cacheKey, out var cached)) return cached;
 
-            var iconName = GetMimeIconName(ext);
-            // Try the specific icon name first, then common generic fallbacks.
-            var bitmap = FindIcon(iconName)
-                      ?? FindIcon("text-x-generic")
-                      ?? FindIcon("application-octet-stream");
+                var iconName = GetMimeIconName(ext);
+                // Try the specific icon name first, then common generic fallbacks.
+                var bitmap = FindIcon(iconName)
+                          ?? FindIcon("text-x-generic")
+                          ?? FindIcon("application-octet-stream");
 
-            _iconCache[cacheKey] = bitmap;
-            return bitmap;
+                _iconCache[cacheKey] = bitmap;
+                return bitmap;
+            }
         }
         catch { return null; }
     }
@@ -72,18 +78,24 @@ public class LinuxIconExtractorService : IIconExtractorService
     {
         try
         {
-            if (_iconCache.TryGetValue(DefaultFolderIconKey, out var cached)) return cached;
-            var bitmap = FindIcon("folder");
-            _iconCache[DefaultFolderIconKey] = bitmap;
-            return bitmap;
+            lock (_cacheLock)
+            {
+                if (_iconCache.TryGetValue(DefaultFolderIconKey, out var cached)) return cached;
+                var bitmap = FindIcon("folder");
+                _iconCache[DefaultFolderIconKey] = bitmap;
+                return bitmap;
+            }
         }
         catch { return null; }
     }
 
     public void ClearCache()
     {
-        foreach (var icon in _iconCache.Values) icon?.Dispose();
-        _iconCache.Clear();
+        lock (_cacheLock)
+        {
+            foreach (var icon in _iconCache.Values) icon?.Dispose();
+            _iconCache.Clear();
+        }
     }
 
     // -------------------------------------------------------------------------

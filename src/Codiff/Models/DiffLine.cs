@@ -22,6 +22,10 @@ public class DiffLine
     public string RightText { get; set; } = string.Empty;
     public int? LeftLineNumber { get; set; }
     public int? RightLineNumber { get; set; }
+
+    /// <summary>Word-level pieces of a modified line; empty when there is no intra-line information.</summary>
     public IReadOnlyList<DiffSpan> LeftSpans { get; set; } = Array.Empty<DiffSpan>();
+
+    /// <summary>Word-level pieces of a modified line; empty when there is no intra-line information.</summary>
     public IReadOnlyList<DiffSpan> RightSpans { get; set; } = Array.Empty<DiffSpan>();
 }

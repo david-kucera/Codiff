@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Codiff.Collections;
 using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,13 +18,6 @@ public enum ViewMode { Both, OnlyLeft, OnlyRight }
 public partial class FolderDiffViewModel : ObservableObject
 {
     private readonly FolderDiffService _folderService = new();
-
-    // Flat list is kept for potential future use, but tree is primary for UI
-    [ObservableProperty]
-    private ObservableCollection<FolderEntryViewModel> _entries = [];
-
-    [ObservableProperty]
-    private FolderEntryViewModel? _selectedEntry;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RecompareCommand))]
@@ -50,9 +44,11 @@ public partial class FolderDiffViewModel : ObservableObject
 
     /// <summary>
     /// Flat, ordered list of currently visible tree nodes.
-    /// Expand/collapse actions rebuild this list in-place.
+    /// Expanding or collapsing a single folder inserts/removes only that folder's rows, so the
+    /// grids keep their scroll position and selection; bulk changes (load, sort, expand/collapse
+    /// all) replace the whole list with a single reset notification.
     /// </summary>
-    public ObservableCollection<FolderNodeViewModel> FlatRows { get; } = [];
+    public BulkObservableCollection<FolderNodeViewModel> FlatRows { get; } = new();
 
     // ── Sort state ────────────────────────────────────────────────────────
 
@@ -133,8 +129,6 @@ public partial class FolderDiffViewModel : ObservableObject
 
         RebuildFlatRows();
     }
-
-    public bool IsVisible { get; set; }
 
     // ── View mode ─────────────────────────────────────────────────────────
 
@@ -472,6 +466,7 @@ public partial class FolderDiffViewModel : ObservableObject
         LoadingText = "Scanning folders…";
 
         FolderDiffResult result;
+        List<FolderNodeViewModel> roots;
         try
         {
             // Progress<T> marshals reports back to the UI thread.
@@ -490,48 +485,85 @@ public partial class FolderDiffViewModel : ObservableObject
                 }
             });
 
-            result = await Task.Run(() => _folderService.DiffFolders(leftFolder, rightFolder, progress));
+            // Everything up to the finished (but not yet displayed) tree runs off the UI thread.
+            (result, roots) = await Task.Run(() =>
+            {
+                var diff = _folderService.DiffFolders(leftFolder, rightFolder, progress);
+                WarmUpIconCache(diff.Entries);
+                return (diff, BuildTree(diff));
+            });
         }
         finally
         {
             IsLoading = false;
         }
 
-        Entries.Clear();
+        // Compute summary statistics in a single pass
+        int identical = 0, oneSide = 0, modified = 0;
         foreach (var entry in result.Entries)
-            Entries.Add(new FolderEntryViewModel(entry));
-
-        // Compute summary statistics
-        IdenticalCount = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.Identical);
-        OneSideCount   = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.OnlyInLeft
-                                                || e.Status == Codiff.Models.FileStatus.OnlyInRight);
-        ModifiedCount  = result.Entries.Count(e => e.Status == Codiff.Models.FileStatus.Modified);
+        {
+            switch (entry.Status)
+            {
+                case FileStatus.Identical: identical++; break;
+                case FileStatus.Modified: modified++; break;
+                default: oneSide++; break;
+            }
+        }
+        IdenticalCount = identical;
+        OneSideCount   = oneSide;
+        ModifiedCount  = modified;
         IsStatsVisible = result.Entries.Count > 0;
 
-        BuildTree(result);
+        ShowTree(roots);
     }
 
-    private void BuildTree(Codiff.Models.FolderDiffResult result)
+    /// <summary>
+    /// Extracts the icons of all items that will be shown in the tree (icons are cached per file
+    /// extension), so that creating the tree nodes only hits the cache.
+    /// Runs on a background thread.
+    /// </summary>
+    private static void WarmUpIconCache(IReadOnlyList<FolderDiffEntry> entries)
     {
-        // Unsubscribe from all existing nodes before clearing
-        foreach (var node in GetAllNodes(RootNodes))
-            node.PropertyChanged -= OnNodePropertyChanged;
+        var iconService = IconExtractorServiceFactory.Instance;
+        iconService.GetFolderIcon(string.Empty);
 
-        _rootNodes.Clear();
+        // One file per extension is enough (same key normalization as the icon services use).
+        var extensions = new HashSet<string>(StringComparer.Ordinal);
+        void WarmUp(string? path)
+        {
+            if (path != null && extensions.Add(Path.GetExtension(path).ToLowerInvariant()))
+                iconService.GetFileIcon(path);
+        }
 
-        // Build a single logical hierarchy keyed by relative path
-        var nodeLookup = new Dictionary<string, FolderNodeViewModel>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in entries)
+        {
+            if (entry.Status == FileStatus.Identical)
+                continue;
+            WarmUp(entry.LeftFullPath);
+            WarmUp(entry.RightFullPath);
+        }
+    }
+
+    /// <summary>
+    /// Creates the tree of differing items and returns its root nodes. The nodes aren't connected to
+    /// anything yet, so this runs on a background thread; <see cref="ShowTree"/> then displays them.
+    /// </summary>
+    private static List<FolderNodeViewModel> BuildTree(FolderDiffResult result)
+    {
+        var roots = new List<FolderNodeViewModel>();
+
+        // Folder nodes keyed by relative path. Every entry is a file (the scan lists files only),
+        // so the last segment of an entry's path is always a file node, with or without an extension.
+        var folders = new Dictionary<string, FolderNodeViewModel>(StringComparer.OrdinalIgnoreCase);
+        var separators = new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
 
         foreach (var entry in result.Entries)
         {
             // Only include differing items in the tree
-            if (entry.Status == Codiff.Models.FileStatus.Identical)
+            if (entry.Status == FileStatus.Identical)
                 continue;
 
-            var parts = entry.RelativePath
-                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                .Where(p => !string.IsNullOrEmpty(p))
-                .ToArray();
+            var parts = entry.RelativePath.Split(separators, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0)
                 continue;
 
@@ -545,37 +577,40 @@ public partial class FolderDiffViewModel : ObservableObject
                     : currentPath + Path.DirectorySeparatorChar + parts[i];
 
                 bool isLeaf = i == parts.Length - 1;
-                bool isFile = isLeaf && !string.IsNullOrEmpty(Path.GetExtension(parts[i]));
-
-                if (!nodeLookup.TryGetValue(currentPath, out var node))
+                if (!isLeaf && folders.TryGetValue(currentPath, out var existingFolder))
                 {
-                    string? leftPath = null;
-                    string? rightPath = null;
-                    var status = Codiff.Models.FileStatus.Modified;
-
-                    if (isLeaf)
-                    {
-                        leftPath = entry.LeftFullPath;
-                        rightPath = entry.RightFullPath;
-                        status = entry.Status;
-                    }
-
-                    node = new FolderNodeViewModel(currentPath, status, leftPath, rightPath, isFile, parent);
-                    nodeLookup[currentPath] = node;
-
-                    if (parent == null)
-                    {
-                        _rootNodes.Add(node);
-                    }
-                    else
-                    {
-                        parent.Children.Add(node);
-                    }
+                    parent = existingFolder;
+                    continue;
                 }
+
+                var node = isLeaf
+                    ? new FolderNodeViewModel(entry, currentPath, parent)
+                    : new FolderNodeViewModel(currentPath, FileStatus.Modified, null, null, isFile: false, parent);
+                if (!isLeaf)
+                    folders[currentPath] = node;
+
+                if (parent == null)
+                    roots.Add(node);
+                else
+                    parent.AddChild(node);
 
                 parent = node;
             }
         }
+
+        return roots;
+    }
+
+    /// <summary>Replaces the displayed tree with <paramref name="roots"/> (UI thread).</summary>
+    private void ShowTree(List<FolderNodeViewModel> roots)
+    {
+        // Unsubscribe from all existing nodes before clearing
+        foreach (var node in GetAllNodes(RootNodes))
+            node.PropertyChanged -= OnNodePropertyChanged;
+
+        RootNodes.Clear();
+        foreach (var root in roots)
+            RootNodes.Add(root);
 
         // Subscribe to new nodes and build the initial flat row list
         foreach (var node in GetAllNodes(RootNodes))
@@ -586,26 +621,61 @@ public partial class FolderDiffViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded) && !_isBatchUpdating)
-            RebuildFlatRows();
+        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded) && !_isBatchUpdating &&
+            sender is FolderNodeViewModel node)
+        {
+            UpdateFlatRowsForToggledNode(node);
+        }
     }
 
     private void RebuildFlatRows()
     {
-        FlatRows.Clear();
+        var rows = new List<FolderNodeViewModel>(FlatRows.Count);
         foreach (var root in ApplySort(RootNodes))
-            AddNodeToFlatRows(root, depth: 0);
+            AddVisibleRows(root, depth: 0, rows);
+        FlatRows.ReplaceAll(rows);
     }
 
-    private void AddNodeToFlatRows(FolderNodeViewModel node, int depth)
+    /// <summary>
+    /// Shows or hides the rows below a folder that was expanded or collapsed, using one insert/remove
+    /// notification per row. (A reset would scroll both grids back to the top and clear the selection.)
+    /// </summary>
+    private void UpdateFlatRowsForToggledNode(FolderNodeViewModel node)
+    {
+        int index = FlatRows.IndexOf(node);
+        if (index < 0)
+            return; // Inside a collapsed folder: no visible row changes.
+
+        if (node.IsExpanded)
+        {
+            var rows = new List<FolderNodeViewModel>();
+            foreach (var child in ApplySort(node.Children))
+                AddVisibleRows(child, node.Depth + 1, rows);
+
+            for (int i = 0; i < rows.Count; i++)
+                FlatRows.Insert(index + 1 + i, rows[i]);
+        }
+        else
+        {
+            int end = index + 1;
+            while (end < FlatRows.Count && FlatRows[end].Depth > node.Depth)
+                end++;
+
+            for (int i = end - 1; i > index; i--)
+                FlatRows.RemoveAt(i);
+        }
+    }
+
+    /// <summary>Appends <paramref name="node"/> and its visible descendants, in display order.</summary>
+    private void AddVisibleRows(FolderNodeViewModel node, int depth, List<FolderNodeViewModel> rows)
     {
         node.Depth = depth;
-        FlatRows.Add(node);
+        rows.Add(node);
 
         if (!node.IsFile && node.IsExpanded)
         {
             foreach (var child in ApplySort(node.Children))
-                AddNodeToFlatRows(child, depth + 1);
+                AddVisibleRows(child, depth + 1, rows);
         }
     }
 
@@ -647,33 +717,19 @@ public partial class FolderDiffViewModel : ObservableObject
         return ordered;
     }
 
-    private static IEnumerable<FolderNodeViewModel> GetAllNodes(IEnumerable<FolderNodeViewModel> nodes)
+    /// <summary>All nodes of the tree in pre-order (iterative, so deep trees don't nest iterators).</summary>
+    private static IEnumerable<FolderNodeViewModel> GetAllNodes(IReadOnlyList<FolderNodeViewModel> roots)
     {
-        foreach (var node in nodes)
+        var stack = new Stack<FolderNodeViewModel>();
+        for (int i = roots.Count - 1; i >= 0; i--)
+            stack.Push(roots[i]);
+
+        while (stack.Count > 0)
         {
+            var node = stack.Pop();
             yield return node;
-            foreach (var descendant in GetAllNodes(node.Children))
-                yield return descendant;
-        }
-    }
-
-    [RelayCommand]
-    private void SelectEntry(FolderEntryViewModel? entry)
-    {
-        if (entry == null) return;
-        SelectedEntry = entry;
-
-        if (entry.LeftFullPath != null && entry.RightFullPath != null)
-        {
-            FileEntrySelected?.Invoke(entry.LeftFullPath, entry.RightFullPath);
-        }
-        else if (entry.LeftFullPath != null)
-        {
-            FileEntrySelected?.Invoke(entry.LeftFullPath, string.Empty);
-        }
-        else if (entry.RightFullPath != null)
-        {
-            FileEntrySelected?.Invoke(string.Empty, entry.RightFullPath);
+            for (int i = node.Children.Count - 1; i >= 0; i--)
+                stack.Push(node.Children[i]);
         }
     }
 
@@ -707,24 +763,6 @@ public partial class FolderDiffViewModel : ObservableObject
         if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
             return;
 
-        try
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                System.Diagnostics.Process.Start("explorer.exe", path);
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                System.Diagnostics.Process.Start("open", path);
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                System.Diagnostics.Process.Start("xdg-open", path);
-            }
-        }
-        catch
-        {
-            // Swallow any OS-specific errors; this is a convenience feature.
-        }
+        FileManagerService.OpenFolder(path);
     }
 }

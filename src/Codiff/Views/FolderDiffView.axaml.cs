@@ -26,6 +26,7 @@ public partial class FolderDiffView : UserControl
             null, new[] { typeof(ScrollEventType) }, null);
 
     private bool _isSyncing;
+    private bool _gridsSetUp;
     private FolderDiffViewModel? _subscribedViewModel;
 
     public FolderDiffView()
@@ -187,9 +188,13 @@ public partial class FolderDiffView : UserControl
 
     private void SetupGrids()
     {
+        // The handlers below must only be added once, even if the view is re-attached.
+        if (_gridsSetUp) return;
+
         var leftGrid = this.FindControl<DataGrid>("LeftDataGrid");
         var rightGrid = this.FindControl<DataGrid>("RightDataGrid");
         if (leftGrid == null || rightGrid == null) return;
+        _gridsSetUp = true;
 
         // Track which side was last interacted with ──────────────────────────
         leftGrid.PointerPressed  += (_, _) => { if (_subscribedViewModel != null) _subscribedViewModel.SelectedSide = FolderSide.Left; };
@@ -409,40 +414,19 @@ public partial class FolderDiffView : UserControl
         if (!IsPathSelectionSafe(leftPath, rightPath))
             return;
 
-        var vm = new FileDiffViewModel();
+        if (string.IsNullOrEmpty(leftPath) && string.IsNullOrEmpty(rightPath))
+            return;
 
-        if (!string.IsNullOrEmpty(leftPath) && !string.IsNullOrEmpty(rightPath))
+        var vm = new FileDiffViewModel();
+        try
         {
+            // A missing side (empty path) is compared as an empty file.
             vm.LoadFiles(leftPath, rightPath);
         }
-        else if (!string.IsNullOrEmpty(leftPath))
+        catch (Exception ex)
         {
-            try
-            {
-                vm.LoadTexts(File.ReadAllText(leftPath), string.Empty, leftPath, string.Empty);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to read left file: {leftPath}");
-                System.Diagnostics.Debug.WriteLine(ex);
-                return;
-            }
-        }
-        else if (!string.IsNullOrEmpty(rightPath))
-        {
-            try
-            {
-                vm.LoadTexts(string.Empty, File.ReadAllText(rightPath), string.Empty, rightPath);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to read right file: {rightPath}");
-                System.Diagnostics.Debug.WriteLine(ex);
-                return;
-            }
-        }
-        else
-        {
+            System.Diagnostics.Debug.WriteLine($"Failed to read '{leftPath}' / '{rightPath}'");
+            System.Diagnostics.Debug.WriteLine(ex);
             return;
         }
 

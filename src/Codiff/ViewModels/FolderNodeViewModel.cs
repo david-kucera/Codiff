@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Codiff.Models;
@@ -35,6 +35,13 @@ public partial class FolderNodeViewModel : ObservableObject
     private static IBrush PresentBrush => ThemeService.Instance.IsDark ? PresentBrushDark : PresentBrushLight;
     private static IBrush MissingBrush => ThemeService.Instance.IsDark ? MissingBrushDark : MissingBrushLight;
 
+    // Reused for theme notifications, which are raised for every visible row at once.
+    private static readonly PropertyChangedEventArgs LeftStatusColorChangedArgs = new(nameof(LeftStatusColor));
+    private static readonly PropertyChangedEventArgs RightStatusColorChangedArgs = new(nameof(RightStatusColor));
+
+    private const string TimeFormat = "dd-MMM-yy HH:mm:ss";
+    private static readonly string[] SizeUnits = { "B", "KB", "MB", "GB" };
+
     private enum NodeDisplayStatus
     {
         None,
@@ -42,6 +49,13 @@ public partial class FolderNodeViewModel : ObservableObject
         PresentOnlyOnThisSide,
         MissingOnThisSide
     }
+
+    private readonly List<FolderNodeViewModel> _children = [];
+
+    // Aggregated status of a folder's subtree, computed on first use (rows are re-bound often
+    // while scrolling, and walking the whole subtree each time is expensive for big trees).
+    private NodeDisplayStatus? _leftDisplayStatus;
+    private NodeDisplayStatus? _rightDisplayStatus;
 
     public string? LeftFullPath { get; }
     public string? RightFullPath { get; }
@@ -51,7 +65,8 @@ public partial class FolderNodeViewModel : ObservableObject
 
     public bool IsFile { get; }
 
-    public ObservableCollection<FolderNodeViewModel> Children { get; } = [];
+    /// <summary>Child nodes; only added to while the tree is being built (see <see cref="AddChild"/>).</summary>
+    public IReadOnlyList<FolderNodeViewModel> Children => _children;
 
     public FolderNodeViewModel? Parent { get; }
 
@@ -59,41 +74,33 @@ public partial class FolderNodeViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ExpandSymbol))]
     private bool _isExpanded;
 
-    [ObservableProperty]
-    private Bitmap? _leftIcon;
+    public Bitmap? LeftIcon { get; }
 
-    [ObservableProperty]
-    private Bitmap? _rightIcon;
+    public Bitmap? RightIcon { get; }
 
-    [ObservableProperty]
-    private string _leftSize = "";
+    public string LeftSize => LeftSizeBytes is { } bytes ? FormatSize(bytes) : string.Empty;
 
-    [ObservableProperty]
-    private string _rightSize = "";
+    public string RightSize => RightSizeBytes is { } bytes ? FormatSize(bytes) : string.Empty;
 
-    [ObservableProperty]
-    private string _leftType = "";
+    public string LeftType => IsFile && !string.IsNullOrEmpty(LeftFullPath) ? GetFileType(LeftFullPath) : string.Empty;
 
-    [ObservableProperty]
-    private string _rightType = "";
+    public string RightType => IsFile && !string.IsNullOrEmpty(RightFullPath) ? GetFileType(RightFullPath) : string.Empty;
 
-    [ObservableProperty]
-    private string _leftTime = "";
+    public string LeftTime => LeftTimeRaw?.ToString(TimeFormat) ?? string.Empty;
 
-    [ObservableProperty]
-    private string _rightTime = "";
+    public string RightTime => RightTimeRaw?.ToString(TimeFormat) ?? string.Empty;
 
     /// <summary>Raw byte count used for sorting by Size (<see langword="null"/> when not present on this side).</summary>
-    public long? LeftSizeBytes { get; private set; }
+    public long? LeftSizeBytes { get; }
 
     /// <summary>Raw byte count used for sorting by Size (<see langword="null"/> when not present on this side).</summary>
-    public long? RightSizeBytes { get; private set; }
+    public long? RightSizeBytes { get; }
 
     /// <summary>Raw last-write timestamp used for sorting by Time (<see langword="null"/> when not present on this side).</summary>
-    public DateTime? LeftTimeRaw { get; private set; }
+    public DateTime? LeftTimeRaw { get; }
 
     /// <summary>Raw last-write timestamp used for sorting by Time (<see langword="null"/> when not present on this side).</summary>
-    public DateTime? RightTimeRaw { get; private set; }
+    public DateTime? RightTimeRaw { get; }
 
     public string LeftStatusIcon => GetStatusIcon(FolderSide.Left);
 
@@ -115,13 +122,9 @@ public partial class FolderNodeViewModel : ObservableObject
     /// <summary>True for folder nodes that have at least one child.</summary>
     public bool IsExpandable => !IsFile && Children.Count > 0;
 
-    public string LeftName => !string.IsNullOrEmpty(LeftFullPath)
-        ? System.IO.Path.GetFileName(LeftFullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))
-        : System.IO.Path.GetFileName(RelativePath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+    public string LeftName { get; }
 
-    public string RightName => !string.IsNullOrEmpty(RightFullPath)
-        ? System.IO.Path.GetFileName(RightFullPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar))
-        : System.IO.Path.GetFileName(RelativePath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+    public string RightName { get; }
 
     [RelayCommand]
     private void ToggleExpanded()
@@ -133,10 +136,11 @@ public partial class FolderNodeViewModel : ObservableObject
     /// <summary>Notifies the view that all brush-bound properties have changed (called on theme toggle).</summary>
     public void NotifyThemeChanged()
     {
-        OnPropertyChanged(nameof(LeftStatusColor));
-        OnPropertyChanged(nameof(RightStatusColor));
+        OnPropertyChanged(LeftStatusColorChangedArgs);
+        OnPropertyChanged(RightStatusColorChangedArgs);
     }
 
+    /// <summary>Creates a folder node (or a file node without scan metadata).</summary>
     public FolderNodeViewModel(
         string relativePath,
         FileStatus status,
@@ -152,132 +156,65 @@ public partial class FolderNodeViewModel : ObservableObject
         IsFile = isFile;
         Parent = parent;
 
-        LoadIcons();
-        LoadFileInfo();
+        LeftName = GetDisplayName(leftFullPath, relativePath);
+        RightName = GetDisplayName(rightFullPath, relativePath);
+
+        (LeftIcon, RightIcon) = LoadIcons();
     }
 
-    private void LoadIcons()
+    /// <summary>Creates a file node for a folder-diff entry; size and time come from the folder scan.</summary>
+    public FolderNodeViewModel(FolderDiffEntry entry, string relativePath, FolderNodeViewModel? parent)
+        : this(relativePath, entry.Status, entry.LeftFullPath, entry.RightFullPath, isFile: true, parent)
+    {
+        LeftSizeBytes = entry.LeftSize;
+        RightSizeBytes = entry.RightSize;
+        LeftTimeRaw = entry.LeftLastWriteTime;
+        RightTimeRaw = entry.RightLastWriteTime;
+    }
+
+    /// <summary>Adds a child node while building the tree.</summary>
+    internal void AddChild(FolderNodeViewModel child)
+    {
+        _children.Add(child);
+
+        // The aggregated status of this folder and its ancestors may have changed.
+        for (var node = this; node != null; node = node.Parent)
+        {
+            node._leftDisplayStatus = null;
+            node._rightDisplayStatus = null;
+        }
+    }
+
+    private static string GetDisplayName(string? fullPath, string relativePath)
+    {
+        var path = !string.IsNullOrEmpty(fullPath) ? fullPath : relativePath;
+        return Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+    }
+
+    private (Bitmap? Left, Bitmap? Right) LoadIcons()
     {
         var iconService = IconExtractorServiceFactory.Instance;
 
-        // For folders, load icons synchronously since they use a cached generic icon
-        // This ensures folder icons are immediately available when the DataGrid renders
         if (!IsFile)
-        {
-            LeftIcon = iconService.GetFolderIcon(LeftFullPath ?? "");
-            RightIcon = iconService.GetFolderIcon(RightFullPath ?? "");
-            return;
-        }
+            return (iconService.GetFolderIcon(LeftFullPath ?? ""), iconService.GetFolderIcon(RightFullPath ?? ""));
 
-        // For files, load icons asynchronously to avoid blocking the UI
-        Task.Run(() =>
-        {
-            if (!string.IsNullOrEmpty(LeftFullPath))
-            {
-                var icon = iconService.GetFileIcon(LeftFullPath);
-                if (icon != null)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => LeftIcon = icon);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(RightFullPath))
-            {
-                var icon = iconService.GetFileIcon(RightFullPath);
-                if (icon != null)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => RightIcon = icon);
-                }
-            }
-        });
-    }
-
-    private void LoadFileInfo()
-    {
-        // Load file info asynchronously
-        Task.Run(() =>
-        {
-            if (!string.IsNullOrEmpty(LeftFullPath))
-            {
-                try
-                {
-                    if (IsFile && File.Exists(LeftFullPath))
-                    {
-                        var fileInfo = new FileInfo(LeftFullPath);
-                        var bytes = fileInfo.Length;
-                        var time = fileInfo.LastWriteTime;
-                        LeftSizeBytes = bytes;
-                        LeftTimeRaw = time;
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                        {
-                            LeftSize = FormatSize(bytes);
-                            LeftType = GetFileType(LeftFullPath);
-                            LeftTime = time.ToString("dd-MMM-yy HH:mm:ss");
-                        });
-                    }
-                    else if (!IsFile && Directory.Exists(LeftFullPath))
-                    {
-                        var dirInfo = new DirectoryInfo(LeftFullPath);
-                        var time = dirInfo.LastWriteTime;
-                        LeftTimeRaw = time;
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                        {
-                            LeftSize = "";
-                            LeftType = "File folder";
-                            LeftTime = time.ToString("dd-MMM-yy HH:mm:ss");
-                        });
-                    }
-                }
-                catch { }
-            }
-
-            if (!string.IsNullOrEmpty(RightFullPath))
-            {
-                try
-                {
-                    if (IsFile && File.Exists(RightFullPath))
-                    {
-                        var fileInfo = new FileInfo(RightFullPath);
-                        var bytes = fileInfo.Length;
-                        var time = fileInfo.LastWriteTime;
-                        RightSizeBytes = bytes;
-                        RightTimeRaw = time;
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                        {
-                            RightSize = FormatSize(bytes);
-                            RightType = GetFileType(RightFullPath);
-                            RightTime = time.ToString("dd-MMM-yy HH:mm:ss");
-                        });
-                    }
-                    else if (!IsFile && Directory.Exists(RightFullPath))
-                    {
-                        var dirInfo = new DirectoryInfo(RightFullPath);
-                        var time = dirInfo.LastWriteTime;
-                        RightTimeRaw = time;
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                        {
-                            RightSize = "";
-                            RightType = "File folder";
-                            RightTime = time.ToString("dd-MMM-yy HH:mm:ss");
-                        });
-                    }
-                }
-                catch { }
-            }
-        });
+        // File icons are cached per extension, and FolderDiffViewModel warms that cache on a
+        // background thread before it builds the tree, so these lookups are cheap cache hits.
+        return (
+            string.IsNullOrEmpty(LeftFullPath) ? null : iconService.GetFileIcon(LeftFullPath),
+            string.IsNullOrEmpty(RightFullPath) ? null : iconService.GetFileIcon(RightFullPath));
     }
 
     private static string FormatSize(long bytes)
     {
-        string[] sizes = { "B", "KB", "MB", "GB" };
         double len = bytes;
         int order = 0;
-        while (len >= 1024 && order < sizes.Length - 1)
+        while (len >= 1024 && order < SizeUnits.Length - 1)
         {
             order++;
             len = len / 1024;
         }
-        return $"{len:0.##} {sizes[order]}";
+        return $"{len:0.##} {SizeUnits[order]}";
     }
 
     private static string GetFileType(string filePath)
@@ -294,6 +231,7 @@ public partial class FolderNodeViewModel : ObservableObject
             ".csproj" => "C# Project File",
             ".sln" => "Visual Studio Solution",
             ".json" => "JSON Document",
+            "" => "File",
             _ => $"{extension.TrimStart('.')} File"
         };
     }
@@ -314,7 +252,11 @@ public partial class FolderNodeViewModel : ObservableObject
         _ => Brushes.Transparent
     };
 
-    private NodeDisplayStatus GetDisplayStatus(FolderSide side)
+    private NodeDisplayStatus GetDisplayStatus(FolderSide side) => side == FolderSide.Left
+        ? _leftDisplayStatus ??= ComputeDisplayStatus(side)
+        : _rightDisplayStatus ??= ComputeDisplayStatus(side);
+
+    private NodeDisplayStatus ComputeDisplayStatus(FolderSide side)
     {
         if (IsFile)
         {

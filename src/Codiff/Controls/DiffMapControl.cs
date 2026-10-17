@@ -45,6 +45,11 @@ public class DiffMapControl : Control
     private static IPen BorderPen => ThemeService.Instance.IsDark ? BorderPenDark : BorderPenLight;
     private static IBrush ViewportBrush => ThemeService.Instance.IsDark ? ViewportBrushDark : ViewportBrushLight;
 
+    // Consecutive changed lines of the same kind. Rendering runs on every scroll, so it draws one
+    // rectangle per block instead of one per line; rebuilt only when the lines change.
+    private readonly List<(int Start, int Count, LineType Type)> _runs = new();
+    private bool _runsDirty = true;
+
     public ObservableCollection<DiffLineViewModel>? Lines
     {
         get => GetValue(LinesProperty);
@@ -100,6 +105,7 @@ public class DiffMapControl : Control
             if (change.NewValue is ObservableCollection<DiffLineViewModel> newCollection)
                 newCollection.CollectionChanged += OnLinesCollectionChanged;
 
+            _runsDirty = true;
             InvalidateVisual();
         }
 
@@ -117,6 +123,7 @@ public class DiffMapControl : Control
 
     private void OnLinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        _runsDirty = true;
         InvalidateVisual();
     }
 
@@ -158,6 +165,23 @@ public class DiffMapControl : Control
         }
     }
 
+    private void RebuildRuns(IList<DiffLineViewModel> lines)
+    {
+        _runs.Clear();
+        int i = 0;
+        while (i < lines.Count)
+        {
+            var lineType = lines[i].LineType;
+            int start = i;
+            while (i < lines.Count && lines[i].LineType == lineType)
+                i++;
+
+            if (lineType != LineType.Unchanged && lineType != LineType.Filler)
+                _runs.Add((start, i - start, lineType));
+        }
+        _runsDirty = false;
+    }
+
     public override void Render(DrawingContext context)
     {
         base.Render(context);
@@ -171,15 +195,16 @@ public class DiffMapControl : Control
         var lines = Lines;
         if (lines == null || lines.Count == 0) return;
 
+        if (_runsDirty)
+            RebuildRuns(lines);
+
         int totalLines = lines.Count;
         double markerMinHeight = 2.0;
+        double lineHeight = height / totalLines;
+        double markerHeight = Math.Max(lineHeight, markerMinHeight);
 
-        for (int i = 0; i < totalLines; i++)
+        foreach (var (start, count, lineType) in _runs)
         {
-            var lineType = lines[i].LineType;
-            if (lineType == LineType.Unchanged || lineType == LineType.Filler)
-                continue;
-
             IBrush brush = lineType switch
             {
                 LineType.Modified => ModifiedBrush,
@@ -188,9 +213,10 @@ public class DiffMapControl : Control
                 _ => Brushes.Transparent
             };
 
-            double y = (double)i / totalLines * height;
-            double markerHeight = Math.Max(height / totalLines, markerMinHeight);
-            context.DrawRectangle(brush, null, new Rect(1, y, width - 2, markerHeight));
+            // Covers exactly the area of the block's individual line markers.
+            double y = (double)start / totalLines * height;
+            double blockHeight = (count - 1) * lineHeight + markerHeight;
+            context.DrawRectangle(brush, null, new Rect(1, y, width - 2, blockHeight));
         }
 
         // Draw viewport indicator

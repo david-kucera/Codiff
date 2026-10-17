@@ -52,6 +52,10 @@ public class MacOSIconExtractorService : IIconExtractorService
 
     private static MacOSIconExtractorService? _instance;
     private static readonly object _lock = new();
+
+    // Icons are requested from background threads, so the cache (and the AppKit calls that fill
+    // it) are guarded by a lock.
+    private static readonly object _cacheLock = new();
     private static readonly Dictionary<string, Bitmap?> _iconCache = new();
 
     private readonly bool _initialized;
@@ -66,6 +70,7 @@ public class MacOSIconExtractorService : IIconExtractorService
     private readonly IntPtr _lengthSel;
     private readonly IntPtr _nsAutoreleasePoolClass;
     private readonly IntPtr _allocSel;
+    private readonly IntPtr _initSel;
     private readonly IntPtr _drainSel;
     private readonly IntPtr _nsStringClass;
     private readonly IntPtr _initWithUTF8StringSel;
@@ -93,6 +98,7 @@ public class MacOSIconExtractorService : IIconExtractorService
         try
         {
             _allocSel = GetSel("alloc");
+            _initSel = GetSel("init");
             _drainSel = GetSel("drain");
             _releaseSel = GetSel("release");
             _nsAutoreleasePoolClass = GetClass("NSAutoreleasePool");
@@ -127,10 +133,13 @@ public class MacOSIconExtractorService : IIconExtractorService
         try
         {
             var cacheKey = GetCacheKey(filePath, isDirectory: false);
-            if (_iconCache.TryGetValue(cacheKey, out var cached)) return cached;
-            var bitmap = ExtractIcon(filePath);
-            _iconCache[cacheKey] = bitmap;
-            return bitmap;
+            lock (_cacheLock)
+            {
+                if (_iconCache.TryGetValue(cacheKey, out var cached)) return cached;
+                var bitmap = ExtractIcon(filePath);
+                _iconCache[cacheKey] = bitmap;
+                return bitmap;
+            }
         }
         catch { return null; }
     }
@@ -140,21 +149,27 @@ public class MacOSIconExtractorService : IIconExtractorService
         if (!_initialized) return null;
         try
         {
-            if (_iconCache.TryGetValue(DefaultFolderIconKey, out var cached)) return cached;
-            // Use the actual path if available, otherwise /tmp which is always a plain directory
-            // and therefore gives the standard folder icon (not the disk icon returned for "/").
-            var path = string.IsNullOrEmpty(folderPath) ? "/tmp" : folderPath;
-            var bitmap = ExtractIcon(path);
-            _iconCache[DefaultFolderIconKey] = bitmap;
-            return bitmap;
+            lock (_cacheLock)
+            {
+                if (_iconCache.TryGetValue(DefaultFolderIconKey, out var cached)) return cached;
+                // Use the actual path if available, otherwise /tmp which is always a plain directory
+                // and therefore gives the standard folder icon (not the disk icon returned for "/").
+                var path = string.IsNullOrEmpty(folderPath) ? "/tmp" : folderPath;
+                var bitmap = ExtractIcon(path);
+                _iconCache[DefaultFolderIconKey] = bitmap;
+                return bitmap;
+            }
         }
         catch { return null; }
     }
 
     public void ClearCache()
     {
-        foreach (var icon in _iconCache.Values) icon?.Dispose();
-        _iconCache.Clear();
+        lock (_cacheLock)
+        {
+            foreach (var icon in _iconCache.Values) icon?.Dispose();
+            _iconCache.Clear();
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -164,7 +179,7 @@ public class MacOSIconExtractorService : IIconExtractorService
     private Bitmap? ExtractIcon(string path)
     {
         // Wrap in an autorelease pool so ObjC autoreleased objects are freed promptly.
-        var pool = MsgSend(MsgSend(_nsAutoreleasePoolClass, _allocSel), GetSel("init"));
+        var pool = MsgSend(MsgSend(_nsAutoreleasePoolClass, _allocSel), _initSel);
         try
         {
             var nsPath = CreateNSString(path);

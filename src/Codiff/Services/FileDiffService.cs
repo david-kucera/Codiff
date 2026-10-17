@@ -1,3 +1,4 @@
+using System.Text;
 using Codiff.Models;
 using DiffPlex;
 using DiffPlex.DiffBuilder;
@@ -14,25 +15,31 @@ namespace Codiff.Services;
 public class FileDiffService
 {
     #region Class members
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
     private readonly ISideBySideDiffBuilder _diffBuilder = new SideBySideDiffBuilder(new Differ());
     #endregion // Class members
 
     #region Public functions
+    /// <summary>
+    /// Compares two files. An empty path stands for a side without a file and is compared as empty text.
+    /// </summary>
     public FileDiffResult DiffFiles(string leftPath, string rightPath)
     {
-        var leftText = File.ReadAllText(leftPath);
-        var rightText = File.ReadAllText(rightPath);
-        return DiffTexts(leftText, rightText, leftPath, rightPath);
+        var (leftText, leftEncoding) = ReadFile(leftPath);
+        var (rightText, rightEncoding) = ReadFile(rightPath);
+        var result = DiffTexts(leftText, rightText, leftPath, rightPath);
+        result.LeftFormat = result.LeftFormat with { Encoding = leftEncoding };
+        result.RightFormat = result.RightFormat with { Encoding = rightEncoding };
+        return result;
     }
 
     public FileDiffResult DiffTexts(string leftText, string rightText, string leftPath = "", string rightPath = "")
     {
         var model = _diffBuilder.BuildDiffModel(leftText, rightText);
 
-        var lines = new List<DiffLine>();
-        var hunkIndices = new List<int>();
-
         int count = Math.Max(model.OldText.Lines.Count, model.NewText.Lines.Count);
+        var lines = new List<DiffLine>(count);
+        var hunkIndices = new List<int>();
         bool prevWasDiff = false;
 
         for (int i = 0; i < count; i++)
@@ -56,6 +63,8 @@ public class FileDiffService
             RightFilePath = rightPath,
             LeftFileExists = !string.IsNullOrEmpty(leftPath) && File.Exists(leftPath),
             RightFileExists = !string.IsNullOrEmpty(rightPath) && File.Exists(rightPath),
+            LeftFormat = TextFileFormat.Default with { NewLine = DetectNewLine(leftText) },
+            RightFormat = TextFileFormat.Default with { NewLine = DetectNewLine(rightText) },
             Lines = lines,
             DiffHunkIndices = hunkIndices
         };
@@ -63,6 +72,31 @@ public class FileDiffService
     #endregion // Public functions
 
     #region Private functions
+    /// <summary>
+    /// Reads a file like <see cref="File.ReadAllText(string)"/> does (UTF-8 unless a byte-order mark
+    /// says otherwise) and also returns the detected encoding, so saving can keep the BOM.
+    /// </summary>
+    private static (string Text, Encoding Encoding) ReadFile(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return (string.Empty, TextFileFormat.Default.Encoding);
+
+        using var reader = new StreamReader(path, Utf8NoBom, detectEncodingFromByteOrderMarks: true);
+        var text = reader.ReadToEnd();
+        return (text, reader.CurrentEncoding);
+    }
+
+    /// <summary>Returns the first line terminator used in <paramref name="text"/> (platform default when there is none).</summary>
+    private static string DetectNewLine(string text)
+    {
+        int i = text.AsSpan().IndexOfAny('\r', '\n');
+        if (i < 0)
+            return Environment.NewLine;
+        if (text[i] == '\n')
+            return "\n";
+        return i + 1 < text.Length && text[i + 1] == '\n' ? "\r\n" : "\r";
+    }
+
     private static DiffLine BuildDiffLine(DiffPiece? oldPiece, DiffPiece? newPiece)
     {
         if (oldPiece == null && newPiece == null)
@@ -109,14 +143,11 @@ public class FileDiffService
 
     private static IReadOnlyList<DiffSpan> BuildSpans(DiffPiece? piece)
     {
+        // Only modified lines carry word-level sub-pieces; everything else has no intra-line information.
         if (piece == null || piece.SubPieces.Count == 0)
-        {
-            return piece != null
-                ? new[] { new DiffSpan { Text = piece.Text ?? string.Empty, IsChanged = false } }
-                : Array.Empty<DiffSpan>();
-        }
+            return Array.Empty<DiffSpan>();
 
-        var spans = new List<DiffSpan>();
+        var spans = new List<DiffSpan>(piece.SubPieces.Count);
         foreach (var sub in piece.SubPieces)
         {
             if (sub.Text == null) continue;

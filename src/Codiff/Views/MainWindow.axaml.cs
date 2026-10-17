@@ -62,12 +62,9 @@ public partial class MainWindow : Window
             menuItem.Click += (s, e) =>
             {
                 // Close all open menus by setting the menu's IsOpen to false
-                if (this.FindControl<Menu>("MainMenu") is Menu mainMenu)
+                foreach (var item in MainMenu.Items.OfType<MenuItem>())
                 {
-                    foreach (var item in mainMenu.Items.OfType<MenuItem>())
-                    {
-                        item.IsSubMenuOpen = false;
-                    }
+                    item.IsSubMenuOpen = false;
                 }
             };
             RecentMenuItem.Items.Add(menuItem);
