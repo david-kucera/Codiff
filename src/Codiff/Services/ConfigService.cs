@@ -102,6 +102,7 @@ public class AppConfig
     // ── File comparison options ──────────────────────────────────────────
     public bool IgnoreWhiteSpace { get; set; } = true;
     public bool IgnoreCase { get; set; }
+    public bool SyntaxHighlighting { get; set; } = true;
 
     /// <summary>Show the two files above each other instead of side by side.</summary>
     public bool HorizontalSplit { get; set; }

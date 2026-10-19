@@ -9,7 +9,10 @@ It compares files and folders side by side with synchronized views, visual highl
 
 ### File compare
 - Side-by-side line diff for two files (or for a file that exists on one side only)
+- Differences are found the way git finds them (Myers algorithm with git's indent heuristic), so the changes are the same as in `git diff` and on GitHub
+- GitHub-style display: removed lines red on the left, added lines green on the right, empty rows facing lines that exist on one side only; similar lines of a changed block are aligned next to each other
 - Changed words highlighted inside modified lines
+- Syntax highlighting for about 60 languages (TextMate grammars, as in VS Code) with GitHub's colors for the light and dark theme; can be turned off in `Options`
 - Toolbar with first / previous / next / last difference; the current difference is marked
 - Status bar: `Difference N of M`, counts of changed / added / deleted lines, encoding and line endings of both files
 - Copy the current difference to the right or to the left (merge), with undo
@@ -72,7 +75,8 @@ It compares files and folders side by side with synchronized views, visual highl
 - `C#`
 - `Avalonia 11`
 - `CommunityToolkit.Mvvm`
-- `DiffPlex`
+- `TextMateSharp` (syntax highlighting)
+- Line diff: a port of git's xdiff (Myers algorithm, indent heuristic)
 
 ## Getting started
 
@@ -109,5 +113,5 @@ The `CODIFF_CONFIG_DIR` environment variable points the settings to another fold
 Saved settings include:
 - active theme
 - recent comparisons (up to 10 entries)
-- compare options (ignore white space, ignore case) and the split orientation
+- compare options (ignore white space, ignore case), syntax highlighting and the split orientation
 - which files the folder comparison shows (identical / different / only in one directory)

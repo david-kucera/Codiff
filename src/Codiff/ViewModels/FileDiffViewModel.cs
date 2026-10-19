@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Codiff.ViewModels;
 
-public partial class FileDiffViewModel : ObservableObject
+public partial class FileDiffViewModel : ObservableObject, IDisposable
 {
     /// <summary>
     /// Line separator of the texts kept in memory and compared; files are written back with
@@ -19,22 +19,30 @@ public partial class FileDiffViewModel : ObservableObject
     private const string ModifiedStatus = "● Modified";
     private const string SavedStatus = "✔ Saved";
 
+    // Time spent tokenizing synchronously, so the first lines are colored when they appear; the
+    // rest is done in the background.
+    private static readonly TimeSpan SyntaxBudgetOnLoad = TimeSpan.FromMilliseconds(60);
+    private static readonly TimeSpan SyntaxBudgetOnRediff = TimeSpan.FromMilliseconds(25);
+
     private readonly FileDiffService _diffService = new();
 
     // Created once and shared by all lines, so subscribing to every line doesn't allocate a delegate per line.
-    private readonly Action _onLeftTextEdited;
-    private readonly Action _onRightTextEdited;
+    private readonly Action<DiffLineViewModel> _onLeftTextEdited;
+    private readonly Action<DiffLineViewModel> _onRightTextEdited;
+    private readonly Action<SyntaxSideHighlighter, int, int> _onSyntaxLinesChanged;
 
     public FileDiffViewModel()
     {
         _onLeftTextEdited = OnLeftTextEdited;
         _onRightTextEdited = OnRightTextEdited;
+        _onSyntaxLinesChanged = OnSyntaxLinesChanged;
 
         // Start with the last-used preferences (popup windows inherit them too).
         var config = ConfigService.Instance.Config;
         _isHorizontalSplit = config.HorizontalSplit;
         _ignoreWhiteSpace = config.IgnoreWhiteSpace;
         _ignoreCase = config.IgnoreCase;
+        _syntaxHighlighting = config.SyntaxHighlighting;
     }
 
     /// <summary>
@@ -87,6 +95,10 @@ public partial class FileDiffViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText))]
     private bool _ignoreCase;
+
+    /// <summary>Color the text by the syntax of the files' programming language (persisted preference).</summary>
+    [ObservableProperty]
+    private bool _syntaxHighlighting;
 
     /// <summary>True when at least one of the compared files is binary; there are no lines then.</summary>
     [ObservableProperty]
@@ -184,11 +196,18 @@ public partial class FileDiffViewModel : ObservableObject
         ? string.Empty
         : $"{ChangedLineCount} changed · {AddedLineCount} added · {DeletedLineCount} deleted lines";
 
-    /// <summary>Encoding and line endings of the left file, e.g. "UTF-8 · CRLF".</summary>
-    public string LeftFormatText => LeftFileExists && !IsBinary ? _leftFormat.Description : string.Empty;
+    /// <summary>Encoding, line endings and highlighted language of the left file, e.g. "UTF-8 · CRLF · C#".</summary>
+    public string LeftFormatText => FormatText(LeftFileExists, _leftFormat, _leftHighlighter);
 
-    /// <summary>Encoding and line endings of the right file, e.g. "UTF-8 · CRLF".</summary>
-    public string RightFormatText => RightFileExists && !IsBinary ? _rightFormat.Description : string.Empty;
+    /// <summary>Encoding, line endings and highlighted language of the right file.</summary>
+    public string RightFormatText => FormatText(RightFileExists, _rightFormat, _rightHighlighter);
+
+    private string FormatText(bool fileExists, TextFileFormat format, SyntaxSideHighlighter? highlighter)
+    {
+        if (!fileExists || IsBinary)
+            return string.Empty;
+        return highlighter == null ? format.Description : $"{format.Description} · {highlighter.Language.Name}";
+    }
 
     /// <summary>Message shown instead of the lines for binary files.</summary>
     public string BinaryMessage => IsBinary
@@ -280,7 +299,7 @@ public partial class FileDiffViewModel : ObservableObject
         LeftFileExists = result.LeftFileExists;
         RightFileExists = result.RightFileExists;
 
-        ShowDiff(result, anchorLine);
+        ShowDiff(result, anchorLine, SyntaxBudgetOnLoad);
 
         _leftBaseline = ReconstructText(isLeft: true, InternalNewLine);
         _rightBaseline = ReconstructText(isLeft: false, InternalNewLine);
@@ -301,7 +320,7 @@ public partial class FileDiffViewModel : ObservableObject
     /// Replaces the displayed lines with <paramref name="result"/>. The current difference becomes
     /// the first one starting at or after <paramref name="anchorLine"/> (the first one when it is -1).
     /// </summary>
-    private void ShowDiff(FileDiffResult result, int anchorLine)
+    private void ShowDiff(FileDiffResult result, int anchorLine, TimeSpan syntaxBudget)
     {
         _suppressTextEdited = true;
 
@@ -333,6 +352,7 @@ public partial class FileDiffViewModel : ObservableObject
         TotalDiffs = _hunkIndices.Count;
         CurrentDiffIndex = anchorLine >= 0 ? HunkIndexAtOrAfter(anchorLine) : (TotalDiffs > 0 ? 0 : -1);
         UpdateCurrentHunkMarker();
+        UpdateSyntaxHighlighting(syntaxBudget);
 
         _suppressTextEdited = false;
 
@@ -350,7 +370,7 @@ public partial class FileDiffViewModel : ObservableObject
     private void Rediff(string leftText, string rightText, int anchorLine, bool navigate)
     {
         var result = _diffService.DiffTexts(leftText, rightText, LeftFilePath, RightFilePath, Options);
-        ShowDiff(result, anchorLine);
+        ShowDiff(result, anchorLine, SyntaxBudgetOnRediff);
 
         SetSideModified(isLeft: true, leftText != _leftBaseline);
         SetSideModified(isLeft: false, rightText != _rightBaseline);
@@ -383,16 +403,20 @@ public partial class FileDiffViewModel : ObservableObject
 
     // ── Editing state ─────────────────────────────────────────────────────
 
-    private void OnLeftTextEdited()
+    private void OnLeftTextEdited(DiffLineViewModel line)
     {
         if (_suppressTextEdited) return;
         SetSideModified(isLeft: true, modified: true);
+        if (line.Model.LeftLineNumber is int number)
+            _leftHighlighter?.UpdateLine(number - 1, line.LeftText);
     }
 
-    private void OnRightTextEdited()
+    private void OnRightTextEdited(DiffLineViewModel line)
     {
         if (_suppressTextEdited) return;
         SetSideModified(isLeft: false, modified: true);
+        if (line.Model.RightLineNumber is int number)
+            _rightHighlighter?.UpdateLine(number - 1, line.RightText);
     }
 
     private void SetSideModified(bool isLeft, bool modified)
@@ -602,6 +626,7 @@ public partial class FileDiffViewModel : ObservableObject
         (_leftFormat, _rightFormat) = (_rightFormat, _leftFormat);
         (_leftBaseline, _rightBaseline) = (_rightBaseline, _leftBaseline);
         (_isLeftModified, _isRightModified) = (_isRightModified, _isLeftModified);
+        (_leftHighlighter, _rightHighlighter) = (_rightHighlighter, _leftHighlighter);
         (LeftStatusText, RightStatusText) = (RightStatusText, LeftStatusText);
         OnPropertyChanged(nameof(LeftFormatText));
         OnPropertyChanged(nameof(RightFormatText));
@@ -639,6 +664,13 @@ public partial class FileDiffViewModel : ObservableObject
             CurrentHunkLineIndex, navigate: false);
     }
 
+    partial void OnSyntaxHighlightingChanged(bool value)
+    {
+        ConfigService.Instance.Config.SyntaxHighlighting = value;
+        ConfigService.Instance.Save();
+        UpdateSyntaxHighlighting(SyntaxBudgetOnLoad);
+    }
+
     [RelayCommand]
     private void ToggleSplitterOrientation() => IsHorizontalSplit = !IsHorizontalSplit;
 
@@ -646,6 +678,115 @@ public partial class FileDiffViewModel : ObservableObject
     {
         ConfigService.Instance.Config.HorizontalSplit = value;
         ConfigService.Instance.Save();
+    }
+
+    // ── Syntax highlighting ───────────────────────────────────────────────
+
+    private SyntaxSideHighlighter? _leftHighlighter;
+    private SyntaxSideHighlighter? _rightHighlighter;
+
+    // Row of each line of the left and of the right file.
+    private int[] _leftLineRows = [];
+    private int[] _rightLineRows = [];
+
+    /// <summary>
+    /// Gives the rows their syntax highlighting after they have been built. Lines that are the same
+    /// as before keep their colors; the others are tokenized (partly right away, see
+    /// <see cref="SyntaxSideHighlighter.SetLines"/>).
+    /// </summary>
+    private void UpdateSyntaxHighlighting(TimeSpan synchronousBudget)
+    {
+        var (leftLines, leftRows) = SideLines(isLeft: true);
+        var (rightLines, rightRows) = SideLines(isLeft: false);
+        _leftLineRows = leftRows;
+        _rightLineRows = rightRows;
+
+        // Each side tokenizes with its own copy of the grammar, so both can run at the same time.
+        _leftHighlighter = PrepareHighlighter(_leftHighlighter, LeftFilePath, RightFilePath, leftLines, grammarCopy: 0);
+        _rightHighlighter = PrepareHighlighter(_rightHighlighter, RightFilePath, LeftFilePath, rightLines, grammarCopy: 1);
+        _leftHighlighter?.SetLines(leftLines, synchronousBudget);
+        _rightHighlighter?.SetLines(rightLines, synchronousBudget);
+
+        for (int i = 0; i < leftRows.Length; i++)
+            Lines[leftRows[i]].LeftSyntax = _leftHighlighter?.GetLine(i);
+        for (int i = 0; i < rightRows.Length; i++)
+            Lines[rightRows[i]].RightSyntax = _rightHighlighter?.GetLine(i);
+
+        OnPropertyChanged(nameof(LeftFormatText));
+        OnPropertyChanged(nameof(RightFormatText));
+    }
+
+    /// <summary>
+    /// The highlighter for one side: the current one while the language stays the same, else a new
+    /// one. A file without a known language gets the other file's language (e.g. "a.cs" against
+    /// "a.cs.orig"); null when there is nothing to highlight.
+    /// </summary>
+    private SyntaxSideHighlighter? PrepareHighlighter(SyntaxSideHighlighter? current, string path, string otherPath,
+        string[] lines, int grammarCopy)
+    {
+        SyntaxLanguage? language = null;
+        if (SyntaxHighlighting && !IsBinary && lines.Length > 0 && TextLength(lines) <= SyntaxGrammars.MaxTextLength)
+            language = SyntaxGrammars.FindLanguage(path) ?? SyntaxGrammars.FindLanguage(otherPath);
+
+        if (current != null && current.Language == language)
+            return current;
+
+        current?.Stop();
+        if (language == null || SyntaxGrammars.GetGrammar(language, grammarCopy) is not { } grammar)
+            return null;
+        return new SyntaxSideHighlighter(grammar, _onSyntaxLinesChanged);
+    }
+
+    private static long TextLength(string[] lines)
+    {
+        long length = 0;
+        foreach (var line in lines)
+            length += line.Length + 1;
+        return length;
+    }
+
+    /// <summary>Lines of one side and the rows they are shown in.</summary>
+    private (string[] Lines, int[] Rows) SideLines(bool isLeft)
+    {
+        var lines = new List<string>(Lines.Count);
+        var rows = new List<int>(Lines.Count);
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            var line = Lines[i];
+            if (isLeft ? line.HasLeftLine : line.HasRightLine)
+            {
+                lines.Add(isLeft ? line.LeftText : line.RightText);
+                rows.Add(i);
+            }
+        }
+        return (lines.ToArray(), rows.ToArray());
+    }
+
+    private void OnSyntaxLinesChanged(SyntaxSideHighlighter highlighter, int first, int count)
+    {
+        bool isLeft = highlighter == _leftHighlighter;
+        if (!isLeft && highlighter != _rightHighlighter)
+            return;
+
+        var rows = isLeft ? _leftLineRows : _rightLineRows;
+        int end = Math.Min(first + count, rows.Length);
+        for (int i = first; i < end; i++)
+        {
+            var line = Lines[rows[i]];
+            if (isLeft)
+                line.LeftSyntax = highlighter.GetLine(i);
+            else
+                line.RightSyntax = highlighter.GetLine(i);
+        }
+    }
+
+    /// <summary>Stops background work (syntax highlighting) when the comparison is closed.</summary>
+    public void Dispose()
+    {
+        _leftHighlighter?.Stop();
+        _rightHighlighter?.Stop();
+        _leftHighlighter = null;
+        _rightHighlighter = null;
     }
 
     // ── Merging ───────────────────────────────────────────────────────────

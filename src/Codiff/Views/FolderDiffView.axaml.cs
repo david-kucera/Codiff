@@ -423,6 +423,7 @@ public partial class FolderDiffView : UserControl
         };
         // Keyboard shortcuts (F8, F5, ...) work right away, without clicking into the view first.
         window.Opened += (_, _) => fileView.Focus();
+        window.Closed += (_, _) => vm.Dispose();
 
         if (TopLevel.GetTopLevel(this) is Window owner)
             window.Show(owner);

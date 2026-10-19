@@ -18,17 +18,18 @@
             <Grid ColumnDefinitions="48,*"
                   Background="{Binding LeftBackground}"
                   Height="{x:Static views:FileDiffView.RowHeight}">
-                <!-- Line number -->
+                <!-- Line number (tinted for changed lines) -->
                 <Border Grid.Column="0"
                         Background="{DynamicResource LineNumberBackground}"
                         BorderBrush="{DynamicResource LineNumberBorderBrush}"
-                        BorderThickness="0,0,1,0"
-                        Padding="4,1">
-                    <TextBlock Text="{Binding LeftLineNumberText}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="12"
-                               Foreground="{DynamicResource LineNumberForeground}"
-                               TextAlignment="Right" />
+                        BorderThickness="0,0,1,0">
+                    <Border Background="{Binding LeftNumberBackground}" Padding="4,1">
+                        <TextBlock Text="{Binding LeftLineNumberText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource LineNumberForeground}"
+                                   TextAlignment="Right" />
+                    </Border>
                 </Border>
                 <!-- Marks the lines of the current difference -->
                 <Rectangle Grid.Column="0"
@@ -36,22 +37,29 @@
                            HorizontalAlignment="Left"
                            Fill="{DynamicResource CurrentDiffMarkerBrush}"
                            IsVisible="{Binding IsInCurrentHunk}" />
-                <!-- Changed words and the search match, drawn behind the text -->
-                <controls:LineHighlighter Grid.Column="1"
-                                          Margin="0,1"
-                                          Text="{Binding LeftText}"
-                                          Spans="{Binding Model.LeftSpans}"
-                                          SpanBrush="{Binding LeftWordHighlightBrush}"
-                                          MatchStart="{Binding LeftMatchStart}"
-                                          MatchLength="{Binding MatchLength}"
-                                          MatchBrush="{DynamicResource SearchMatchBrush}"
-                                          FontFamily="Consolas,Courier New,monospace"
-                                          FontSize="13"
-                                          TextOffset="4" />
-                <!-- Content -->
-                <TextBox Grid.Column="1"
+                <!-- The text, colored by syntax, over the changed words, search match and selection -->
+                <controls:DiffLineText Grid.Column="1"
+                                       Margin="0,1"
+                                       Text="{Binding LeftText}"
+                                       Syntax="{Binding LeftSyntax}"
+                                       Spans="{Binding Model.LeftSpans}"
+                                       SpanBrush="{Binding LeftWordHighlightBrush}"
+                                       MatchStart="{Binding LeftMatchStart}"
+                                       MatchLength="{Binding MatchLength}"
+                                       MatchBrush="{DynamicResource SearchMatchBrush}"
+                                       SelectionStart="{Binding #LeftBox.SelectionStart}"
+                                       SelectionEnd="{Binding #LeftBox.SelectionEnd}"
+                                       SelectionBrush="{DynamicResource TextSelectionBrush}"
+                                       FontFamily="Consolas,Courier New,monospace"
+                                       FontSize="13"
+                                       TextOffset="4" />
+                <!-- Editing: the TextBox's own text is invisible, it shows only the caret -->
+                <TextBox x:Name="LeftBox"
+                         Grid.Column="1"
+                         Classes="line"
                          Margin="0,1"
                          Text="{Binding LeftText, Mode=TwoWay}"
+                         IsReadOnly="{Binding !HasLeftLine}"
                          FontFamily="Consolas,Courier New,monospace"
                          FontSize="13"
                          TextWrapping="NoWrap"
@@ -59,7 +67,11 @@
                          BorderThickness="0"
                          Padding="4,0"
                          MinHeight="18"
-                         Background="Transparent" />
+                         Background="Transparent"
+                         Foreground="Transparent"
+                         SelectionBrush="Transparent"
+                         SelectionForegroundBrush="Transparent"
+                         CaretBrush="{DynamicResource DiffTextForeground}" />
             </Grid>
         </DataTemplate>
 
@@ -67,17 +79,18 @@
             <Grid ColumnDefinitions="48,*"
                   Background="{Binding RightBackground}"
                   Height="{x:Static views:FileDiffView.RowHeight}">
-                <!-- Line number -->
+                <!-- Line number (tinted for changed lines) -->
                 <Border Grid.Column="0"
                         Background="{DynamicResource LineNumberBackground}"
                         BorderBrush="{DynamicResource LineNumberBorderBrush}"
-                        BorderThickness="0,0,1,0"
-                        Padding="4,1">
-                    <TextBlock Text="{Binding RightLineNumberText}"
-                               FontFamily="Consolas,Courier New,monospace"
-                               FontSize="12"
-                               Foreground="{DynamicResource LineNumberForeground}"
-                               TextAlignment="Right" />
+                        BorderThickness="0,0,1,0">
+                    <Border Background="{Binding RightNumberBackground}" Padding="4,1">
+                        <TextBlock Text="{Binding RightLineNumberText}"
+                                   FontFamily="Consolas,Courier New,monospace"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource LineNumberForeground}"
+                                   TextAlignment="Right" />
+                    </Border>
                 </Border>
                 <!-- Marks the lines of the current difference -->
                 <Rectangle Grid.Column="0"
@@ -85,22 +98,29 @@
                            HorizontalAlignment="Left"
                            Fill="{DynamicResource CurrentDiffMarkerBrush}"
                            IsVisible="{Binding IsInCurrentHunk}" />
-                <!-- Changed words and the search match, drawn behind the text -->
-                <controls:LineHighlighter Grid.Column="1"
-                                          Margin="0,1"
-                                          Text="{Binding RightText}"
-                                          Spans="{Binding Model.RightSpans}"
-                                          SpanBrush="{Binding RightWordHighlightBrush}"
-                                          MatchStart="{Binding RightMatchStart}"
-                                          MatchLength="{Binding MatchLength}"
-                                          MatchBrush="{DynamicResource SearchMatchBrush}"
-                                          FontFamily="Consolas,Courier New,monospace"
-                                          FontSize="13"
-                                          TextOffset="4" />
-                <!-- Content -->
-                <TextBox Grid.Column="1"
+                <!-- The text, colored by syntax, over the changed words, search match and selection -->
+                <controls:DiffLineText Grid.Column="1"
+                                       Margin="0,1"
+                                       Text="{Binding RightText}"
+                                       Syntax="{Binding RightSyntax}"
+                                       Spans="{Binding Model.RightSpans}"
+                                       SpanBrush="{Binding RightWordHighlightBrush}"
+                                       MatchStart="{Binding RightMatchStart}"
+                                       MatchLength="{Binding MatchLength}"
+                                       MatchBrush="{DynamicResource SearchMatchBrush}"
+                                       SelectionStart="{Binding #RightBox.SelectionStart}"
+                                       SelectionEnd="{Binding #RightBox.SelectionEnd}"
+                                       SelectionBrush="{DynamicResource TextSelectionBrush}"
+                                       FontFamily="Consolas,Courier New,monospace"
+                                       FontSize="13"
+                                       TextOffset="4" />
+                <!-- Editing: the TextBox's own text is invisible, it shows only the caret -->
+                <TextBox x:Name="RightBox"
+                         Grid.Column="1"
+                         Classes="line"
                          Margin="0,1"
                          Text="{Binding RightText, Mode=TwoWay}"
+                         IsReadOnly="{Binding !HasRightLine}"
                          FontFamily="Consolas,Courier New,monospace"
                          FontSize="13"
                          TextWrapping="NoWrap"
@@ -108,7 +128,11 @@
                          BorderThickness="0"
                          Padding="4,0"
                          MinHeight="18"
-                         Background="Transparent" />
+                         Background="Transparent"
+                         Foreground="Transparent"
+                         SelectionBrush="Transparent"
+                         SelectionForegroundBrush="Transparent"
+                         CaretBrush="{DynamicResource DiffTextForeground}" />
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
@@ -132,6 +156,20 @@
             <Setter Property="Width" Value="1" />
             <Setter Property="Margin" Value="4,4" />
             <Setter Property="Background" Value="{DynamicResource ToolbarBorderBrush}" />
+        </Style>
+        <!-- Line text boxes stay transparent and borderless when hovered or focused; their text
+             is drawn by DiffLineText behind them. -->
+        <Style Selector="TextBox.line /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.line:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.line:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
         <Style Selector="TextBlock.status">
             <Setter Property="FontSize" Value="11" />
@@ -250,6 +288,10 @@
                 <ToggleButton Classes="tool" IsChecked="{Binding IgnoreCase}"
                               ToolTip.Tip="Ignore Case">
                     <PathIcon Data="{StaticResource IconIgnoreCase}" />
+                </ToggleButton>
+                <ToggleButton Classes="tool" IsChecked="{Binding SyntaxHighlighting}"
+                              ToolTip.Tip="Syntax Highlighting">
+                    <PathIcon Data="{StaticResource IconSyntaxHighlighting}" />
                 </ToggleButton>
             </StackPanel>
         </Border>

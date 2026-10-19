@@ -286,6 +286,14 @@
                         <PathIcon Data="{StaticResource IconIgnoreCase}" Width="16" Height="16" />
                     </MenuItem.Icon>
                 </MenuItem>
+                <Separator />
+                <MenuItem Header="Syntax Highlighting"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FileDiffViewModel.SyntaxHighlighting, Mode=TwoWay}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconSyntaxHighlighting}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 

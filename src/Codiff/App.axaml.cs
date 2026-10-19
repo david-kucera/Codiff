@@ -23,6 +23,10 @@ public partial class App : Application
         // Apply the saved theme before the window is shown
         ThemeService.Instance.Initialize(ConfigService.Instance.Config.IsDarkTheme);
 
+        // Load the syntax highlighting grammars' index meanwhile, so the first comparison is quicker.
+        if (ConfigService.Instance.Config.SyntaxHighlighting)
+            Task.Run(SyntaxGrammars.Preload);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var vm = new MainWindowViewModel

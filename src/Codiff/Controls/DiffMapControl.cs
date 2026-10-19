@@ -22,18 +22,18 @@ public class DiffMapControl : Control
     public static readonly StyledProperty<bool> IsLeftSideProperty =
         AvaloniaProperty.Register<DiffMapControl, bool>(nameof(IsLeftSide), true);
 
-    // Light-theme brushes
-    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#CCAA00"));
-    private static readonly IBrush AddedBrushLight = new SolidColorBrush(Color.Parse("#22AA22"));
-    private static readonly IBrush DeletedBrushLight = new SolidColorBrush(Color.Parse("#DD4444"));
+    // Light-theme brushes (as GitHub: deleted red, added green, changed amber)
+    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#D4A72C"));
+    private static readonly IBrush AddedBrushLight = new SolidColorBrush(Color.Parse("#4AC26B"));
+    private static readonly IBrush DeletedBrushLight = new SolidColorBrush(Color.Parse("#E5534B"));
     private static readonly IBrush BackgroundBrushLight = new SolidColorBrush(Color.Parse("#F0F0F0"));
     private static readonly IPen BorderPenLight = new Pen(new SolidColorBrush(Color.Parse("#DDDDDD")), 1);
     private static readonly IBrush ViewportBrushLight = new SolidColorBrush(Color.Parse("#22000000"));
 
     // Dark-theme brushes
-    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#CCAA00"));
-    private static readonly IBrush AddedBrushDark = new SolidColorBrush(Color.Parse("#22AA22"));
-    private static readonly IBrush DeletedBrushDark = new SolidColorBrush(Color.Parse("#DD4444"));
+    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#BB8009"));
+    private static readonly IBrush AddedBrushDark = new SolidColorBrush(Color.Parse("#2EA043"));
+    private static readonly IBrush DeletedBrushDark = new SolidColorBrush(Color.Parse("#DA3633"));
     private static readonly IBrush BackgroundBrushDark = new SolidColorBrush(Color.Parse("#1E1E1E"));
     private static readonly IPen BorderPenDark = new Pen(new SolidColorBrush(Color.Parse("#444444")), 1);
     private static readonly IBrush ViewportBrushDark = new SolidColorBrush(Color.Parse("#44FFFFFF"));
@@ -208,8 +208,8 @@ public class DiffMapControl : Control
             IBrush brush = lineType switch
             {
                 LineType.Modified => ModifiedBrush,
-                LineType.Added => IsLeftSide ? DeletedBrush : AddedBrush,
-                LineType.Deleted => IsLeftSide ? AddedBrush : DeletedBrush,
+                LineType.Added => AddedBrush,
+                LineType.Deleted => DeletedBrush,
                 _ => Brushes.Transparent
             };
 

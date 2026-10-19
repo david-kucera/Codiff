@@ -1,63 +1,60 @@
 using System.ComponentModel;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Codiff.Models;
 using Codiff.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Codiff.ViewModels;
 
-public class SpanViewModel
-{
-    public string Text { get; set; } = string.Empty;
-    public IBrush Background { get; set; } = Brushes.Transparent;
-}
-
 public partial class DiffLineViewModel : ObservableObject
 {
-    // Light-theme brushes
-    private static readonly IBrush ModifiedBrushLight = new SolidColorBrush(Color.Parse("#FFFACD"));
-    private static readonly IBrush OneSidedContentBrushLight = new SolidColorBrush(Color.Parse("#CCFFCC"));
-    private static readonly IBrush FillerBrushLight = new SolidColorBrush(Color.Parse("#EEEEEE"));
-    private static readonly IBrush NormalBrushLight = Brushes.White;
+    // Colors as on GitHub: the old version of changed lines is red, the new one green, and the
+    // changed words inside a line are darker. Rows without a line on one side are gray there.
+    private static readonly DiffColors LightColors = new(
+        Normal: Brush("#FFFFFF"), Filler: Brush("#F3F4F6"),
+        DeletedLine: Brush("#FFEBE9"), DeletedNumber: Brush("#FFD7D5"), DeletedWord: Brush("#FFC1C0"),
+        AddedLine: Brush("#E6FFEC"), AddedNumber: Brush("#CCFFD8"), AddedWord: Brush("#ABF2BC"));
 
-    // Dark-theme brushes
-    private static readonly IBrush ModifiedBrushDark = new SolidColorBrush(Color.Parse("#3A3000"));
-    private static readonly IBrush OneSidedContentBrushDark = new SolidColorBrush(Color.Parse("#003000"));
-    private static readonly IBrush FillerBrushDark = new SolidColorBrush(Color.Parse("#2A2A2A"));
-    private static readonly IBrush NormalBrushDark = new SolidColorBrush(Color.Parse("#1E1E1E"));
-
-    // Highlights of changed words inside a line (shared by all lines)
-    private static readonly IBrush ChangedWordLeftModifiedBrush = new SolidColorBrush(Color.Parse("#FFB347"));
-    private static readonly IBrush ChangedWordRightModifiedBrush = new SolidColorBrush(Color.Parse("#66CC66"));
-    private static readonly IBrush ChangedWordAddedBrush = new SolidColorBrush(Color.Parse("#88EE88"));
-    private static readonly IBrush ChangedWordDeletedBrush = new SolidColorBrush(Color.Parse("#FF9999"));
-    private static readonly IBrush ChangedWordLeftModifiedBrushDark = new SolidColorBrush(Color.Parse("#8A5A00"));
-    private static readonly IBrush ChangedWordRightModifiedBrushDark = new SolidColorBrush(Color.Parse("#2E6B2E"));
+    private static readonly DiffColors DarkColors = new(
+        Normal: Brush("#1E1E1E"), Filler: Brush("#262628"),
+        DeletedLine: Brush("#3F2624"), DeletedNumber: Brush("#552B29"), DeletedWord: Brush("#75322F"),
+        AddedLine: Brush("#203224"), AddedNumber: Brush("#223F27"), AddedWord: Brush("#24522D"));
 
     // Reused for theme notifications, which are raised for every line at once.
-    private static readonly PropertyChangedEventArgs LeftBackgroundChangedArgs = new(nameof(LeftBackground));
-    private static readonly PropertyChangedEventArgs RightBackgroundChangedArgs = new(nameof(RightBackground));
-    private static readonly PropertyChangedEventArgs LeftWordHighlightChangedArgs = new(nameof(LeftWordHighlightBrush));
-    private static readonly PropertyChangedEventArgs RightWordHighlightChangedArgs = new(nameof(RightWordHighlightBrush));
+    private static readonly PropertyChangedEventArgs[] ThemeChangedArgs =
+    [
+        new(nameof(LeftBackground)), new(nameof(RightBackground)),
+        new(nameof(LeftNumberBackground)), new(nameof(RightNumberBackground)),
+        new(nameof(LeftWordHighlightBrush)), new(nameof(RightWordHighlightBrush))
+    ];
 
-    private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
-    private static IBrush OneSidedContentBrush => ThemeService.Instance.IsDark ? OneSidedContentBrushDark : OneSidedContentBrushLight;
-    private static IBrush FillerBrush => ThemeService.Instance.IsDark ? FillerBrushDark : FillerBrushLight;
-    private static IBrush NormalBrush => ThemeService.Instance.IsDark ? NormalBrushDark : NormalBrushLight;
-
-    private IReadOnlyList<SpanViewModel>? _leftSpanViewModels;
-    private IReadOnlyList<SpanViewModel>? _rightSpanViewModels;
+    private static DiffColors Colors => ThemeService.Instance.IsDark ? DarkColors : LightColors;
 
     public DiffLine Model { get; }
 
     public string LeftLineNumberText => Model.LeftLineNumber.HasValue ? Model.LeftLineNumber.Value.ToString() : string.Empty;
     public string RightLineNumberText => Model.RightLineNumber.HasValue ? Model.RightLineNumber.Value.ToString() : string.Empty;
 
+    /// <summary>The row has a line of the left file (it is not an empty row facing an added line).</summary>
+    public bool HasLeftLine => Model.LeftLineNumber.HasValue;
+
+    /// <summary>The row has a line of the right file (it is not an empty row facing a deleted line).</summary>
+    public bool HasRightLine => Model.RightLineNumber.HasValue;
+
     [ObservableProperty]
     private string _leftText;
 
     [ObservableProperty]
     private string _rightText;
+
+    /// <summary>Syntax highlighting of the left line (null until it has been tokenized, or without highlighting).</summary>
+    [ObservableProperty]
+    private LineSyntax? _leftSyntax;
+
+    /// <summary>Syntax highlighting of the right line.</summary>
+    [ObservableProperty]
+    private LineSyntax? _rightSyntax;
 
     public LineType LineType => Model.LineType;
 
@@ -77,47 +74,47 @@ public partial class DiffLineViewModel : ObservableObject
     [ObservableProperty]
     private int _matchLength;
 
-    public event Action? LeftTextEdited;
-    public event Action? RightTextEdited;
+    public event Action<DiffLineViewModel>? LeftTextEdited;
+    public event Action<DiffLineViewModel>? RightTextEdited;
 
-    partial void OnLeftTextChanged(string value) => LeftTextEdited?.Invoke();
-    partial void OnRightTextChanged(string value) => RightTextEdited?.Invoke();
+    partial void OnLeftTextChanged(string value) => LeftTextEdited?.Invoke(this);
+    partial void OnRightTextChanged(string value) => RightTextEdited?.Invoke(this);
 
     public IBrush LeftBackground => Model.LineType switch
     {
-        LineType.Modified => ModifiedBrush,
-        LineType.Deleted => OneSidedContentBrush,
-        LineType.Filler => FillerBrush,
-        _ => NormalBrush
+        LineType.Unchanged => Colors.Normal,
+        LineType.Modified or LineType.Deleted => Colors.DeletedLine,
+        _ => Colors.Filler
     };
 
     public IBrush RightBackground => Model.LineType switch
     {
-        LineType.Modified => ModifiedBrush,
-        LineType.Added => OneSidedContentBrush,
-        LineType.Filler => FillerBrush,
-        _ => NormalBrush
+        LineType.Unchanged => Colors.Normal,
+        LineType.Modified or LineType.Added => Colors.AddedLine,
+        _ => Colors.Filler
+    };
+
+    /// <summary>Background of the left line number; null for unchanged lines (the normal line number background).</summary>
+    public IBrush? LeftNumberBackground => Model.LineType switch
+    {
+        LineType.Unchanged => null,
+        LineType.Modified or LineType.Deleted => Colors.DeletedNumber,
+        _ => Colors.Filler
+    };
+
+    /// <summary>Background of the right line number; null for unchanged lines.</summary>
+    public IBrush? RightNumberBackground => Model.LineType switch
+    {
+        LineType.Unchanged => null,
+        LineType.Modified or LineType.Added => Colors.AddedNumber,
+        _ => Colors.Filler
     };
 
     /// <summary>Background of the changed words in the left text of a modified line.</summary>
-    public IBrush? LeftWordHighlightBrush => Model.LineType == LineType.Modified
-        ? (ThemeService.Instance.IsDark ? ChangedWordLeftModifiedBrushDark : ChangedWordLeftModifiedBrush)
-        : null;
+    public IBrush? LeftWordHighlightBrush => Model.LineType == LineType.Modified ? Colors.DeletedWord : null;
 
     /// <summary>Background of the changed words in the right text of a modified line.</summary>
-    public IBrush? RightWordHighlightBrush => Model.LineType == LineType.Modified
-        ? (ThemeService.Instance.IsDark ? ChangedWordRightModifiedBrushDark : ChangedWordRightModifiedBrush)
-        : null;
-
-    /// <summary>Word-level pieces of the left text (created on first use).</summary>
-    public IReadOnlyList<SpanViewModel> LeftSpanViewModels =>
-        _leftSpanViewModels ??= BuildSpanViewModels(Model.LeftSpans, Model.LineType, isLeft: true);
-
-    /// <summary>Word-level pieces of the right text (created on first use).</summary>
-    public IReadOnlyList<SpanViewModel> RightSpanViewModels =>
-        _rightSpanViewModels ??= BuildSpanViewModels(Model.RightSpans, Model.LineType, isLeft: false);
-
-    public bool HasSpans => Model.LeftSpans.Count > 1 || Model.RightSpans.Count > 1;
+    public IBrush? RightWordHighlightBrush => Model.LineType == LineType.Modified ? Colors.AddedWord : null;
 
     public DiffLineViewModel(DiffLine model)
     {
@@ -129,38 +126,20 @@ public partial class DiffLineViewModel : ObservableObject
     /// <summary>Notifies the view that all brush-bound properties have changed (called on theme toggle).</summary>
     public void NotifyThemeChanged()
     {
-        OnPropertyChanged(LeftBackgroundChangedArgs);
-        OnPropertyChanged(RightBackgroundChangedArgs);
-        if (Model.LineType == LineType.Modified)
+        if (Model.LineType == LineType.Unchanged)
         {
-            OnPropertyChanged(LeftWordHighlightChangedArgs);
-            OnPropertyChanged(RightWordHighlightChangedArgs);
+            OnPropertyChanged(ThemeChangedArgs[0]);
+            OnPropertyChanged(ThemeChangedArgs[1]);
+            return;
         }
+        foreach (var args in ThemeChangedArgs)
+            OnPropertyChanged(args);
     }
 
-    private static IReadOnlyList<SpanViewModel> BuildSpanViewModels(IReadOnlyList<DiffSpan> spans, LineType lineType, bool isLeft)
-    {
-        if (spans.Count == 0)
-            return Array.Empty<SpanViewModel>();
+    private static IBrush Brush(string color) => new ImmutableSolidColorBrush(Color.Parse(color));
 
-        IBrush changedBrush = lineType switch
-        {
-            LineType.Modified when isLeft => ChangedWordLeftModifiedBrush,
-            LineType.Modified => ChangedWordRightModifiedBrush,
-            LineType.Added => ChangedWordAddedBrush,
-            LineType.Deleted => ChangedWordDeletedBrush,
-            _ => Brushes.Transparent
-        };
-
-        var result = new SpanViewModel[spans.Count];
-        for (int i = 0; i < spans.Count; i++)
-        {
-            result[i] = new SpanViewModel
-            {
-                Text = spans[i].Text,
-                Background = spans[i].IsChanged ? changedBrush : Brushes.Transparent
-            };
-        }
-        return result;
-    }
+    private sealed record DiffColors(
+        IBrush Normal, IBrush Filler,
+        IBrush DeletedLine, IBrush DeletedNumber, IBrush DeletedWord,
+        IBrush AddedLine, IBrush AddedNumber, IBrush AddedWord);
 }

@@ -18,8 +18,9 @@
     <PackageReference Include="Avalonia.Diagnostics" Version="11.2.7" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.7" />
-    <PackageReference Include="DiffPlex" Version="1.7.2" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <!-- Syntax highlighting: TextMate grammars of about 60 languages (the ones VS Code uses). -->
+    <PackageReference Include="TextMateSharp.Grammars" Version="2.0.4" />
     <!-- Avalonia.FreeDesktop 11.2.x pulls in Tmds.DBus.Protocol 0.20.0, which has a known
          vulnerability (GHSA-xrw6-gwf8-vvr9); 0.21.3 is the API-compatible patched release. -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
