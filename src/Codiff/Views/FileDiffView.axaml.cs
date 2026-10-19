@@ -3,11 +3,15 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Codiff.Controls;
 using Codiff.Services;
 using Codiff.ViewModels;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Codiff.Views;
 
@@ -32,9 +36,49 @@ public partial class FileDiffView : UserControl
     /// <summary>Vertical offset still to be applied once the scroll viewers have measured their content (NaN = none).</summary>
     private double _pendingScrollOffset = double.NaN;
 
+    /// <summary>Side of the pane that last had the keyboard focus (Find and Go to Line use it).</summary>
+    private bool _activeSideIsLeft = true;
+
+    /// <summary>Line of the last search match (-1 = none) and the line showing its highlight.</summary>
+    private int _findLineIndex = -1;
+    private DiffLineViewModel? _findMatchLine;
+
     public FileDiffView()
     {
         InitializeComponent();
+
+        // Shortcuts are handled before the line TextBoxes get the keys (tunnel phase).
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(GotFocusEvent, OnDescendantGotFocus, RoutingStrategies.Bubble);
+
+        foreach (var list in new[] { LeftLines, RightLines, TopLines, BottomLines })
+            list.AddHandler(RequestBringIntoViewEvent, OnLineRequestBringIntoView);
+    }
+
+    /// <summary>
+    /// Clicking into a line asks to bring the whole (very wide) line TextBox into view, which would
+    /// scroll the pane sideways so that the line numbers disappear. Keep the horizontal position
+    /// for such requests and only scroll vertically. Small requests (the caret while typing) are
+    /// followed, but when the caret fits into the first screen the pane scrolls fully left.
+    /// </summary>
+    private void OnLineRequestBringIntoView(object? sender, RequestBringIntoViewEventArgs e)
+    {
+        if (sender is not ItemsControl list || e.TargetObject is not Visual target)
+            return;
+        var viewer = list.FindAncestorOfType<ScrollViewer>();
+        if (viewer == null || target.TranslatePoint(default, list) is not { } origin)
+            return;
+
+        if (e.TargetRect.Width < viewer.Viewport.Width / 2)
+        {
+            double right = origin.X + e.TargetRect.Right;
+            if (right <= viewer.Viewport.Width)
+                e.TargetRect = new Rect(-origin.X, e.TargetRect.Y, right, e.TargetRect.Height);
+            return;
+        }
+
+        double x = Math.Clamp(viewer.Offset.X - origin.X, 0, Math.Max(0, e.TargetRect.Width - 1));
+        e.TargetRect = new Rect(x, e.TargetRect.Y, 1, e.TargetRect.Height);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,18 +108,236 @@ public partial class FileDiffView : UserControl
         }
     }
 
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
+    // ── Keyboard ───────────────────────────────────────────────────────────
 
-        if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (HandleShortcut(e))
+            e.Handled = true;
+    }
+
+    /// <summary>
+    /// Runs the file comparison command bound to the pressed keys and returns true when there was
+    /// one. The main window forwards keys here when the focus is outside this view.
+    /// </summary>
+    public bool HandleShortcut(KeyEventArgs e)
+    {
+        if (DataContext is not FileDiffViewModel vm)
+            return false;
+
+        if (e.Key == Key.Escape && FindBar.IsVisible)
         {
-            if (DataContext is FileDiffViewModel vm)
-            {
-                vm.SaveCommand.Execute(null);
-                e.Handled = true;
-            }
+            CloseFindBar();
+            return true;
         }
+
+        // Ctrl+S is also accepted on macOS (Command+S is the native gesture there).
+        if (Shortcuts.Save.Matches(e) || (e.Key == Key.S && e.KeyModifiers == KeyModifiers.Control))
+            return Run(vm.SaveCommand);
+        if (Shortcuts.NextDifference.Matches(e) || Shortcuts.NextDifferenceAlt.Matches(e))
+            return Run(vm.NextDiffCommand);
+        if (Shortcuts.PreviousDifference.Matches(e) || Shortcuts.PreviousDifferenceAlt.Matches(e))
+            return Run(vm.PrevDiffCommand);
+        if (Shortcuts.FirstDifference.Matches(e))
+            return Run(vm.FirstDiffCommand);
+        if (Shortcuts.LastDifference.Matches(e))
+            return Run(vm.LastDiffCommand);
+        if (Shortcuts.Recompare.Matches(e))
+            return Run(vm.RecompareCommand);
+        if (Shortcuts.CopyToRight.Matches(e))
+            return Run(vm.CopyToRightCommand);
+        if (Shortcuts.CopyToLeft.Matches(e))
+            return Run(vm.CopyToLeftCommand);
+
+        // Inside a text field the gesture undoes typing there instead.
+        if (Shortcuts.Undo.Matches(e) && TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not TextBox)
+            return Run(vm.UndoCommand);
+
+        if (Shortcuts.Find.Matches(e))
+        {
+            ShowFindBar();
+            return true;
+        }
+        if (Shortcuts.FindNext.Matches(e) || Shortcuts.FindPrevious.Matches(e))
+        {
+            FindNext(forward: Shortcuts.FindNext.Matches(e));
+            return true;
+        }
+        if (Shortcuts.GoToLine.Matches(e))
+        {
+            ShowGoToLine();
+            return true;
+        }
+        return false;
+    }
+
+    private static bool Run(IRelayCommand command)
+    {
+        if (command.CanExecute(null))
+            command.Execute(null);
+        return true;
+    }
+
+    /// <summary>Remembers which pane was used last (for Find and Go to Line).</summary>
+    private void OnDescendantGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        if (e.Source is not TextBox box)
+            return;
+
+        var list = box.FindAncestorOfType<ItemsControl>();
+        if (list?.Name is "LeftLines" or "TopLines")
+            _activeSideIsLeft = true;
+        else if (list?.Name is "RightLines" or "BottomLines")
+            _activeSideIsLeft = false;
+    }
+
+    // ── Find ───────────────────────────────────────────────────────────────
+
+    private void OnFindButtonClick(object? sender, RoutedEventArgs e) => ShowFindBar();
+
+    /// <summary>Shows the find bar, searching the pane that was used last.</summary>
+    public void ShowFindBar()
+    {
+        if (!FindBar.IsVisible)
+            FindSideComboBox.SelectedIndex = _activeSideIsLeft ? 0 : 1;
+        FindBar.IsVisible = true;
+        FindTextBox.Focus();
+        FindTextBox.SelectAll();
+    }
+
+    private void CloseFindBar()
+    {
+        FindBar.IsVisible = false;
+        FindStatus.Text = string.Empty;
+        ClearFindMatch();
+        _findLineIndex = -1;
+        Focus();
+    }
+
+    private void OnFindTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            FindNext(forward: !e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            e.Handled = true;
+        }
+    }
+
+    private void OnFindNextClick(object? sender, RoutedEventArgs e) => FindNext(forward: true);
+
+    private void OnFindPreviousClick(object? sender, RoutedEventArgs e) => FindNext(forward: false);
+
+    private void OnFindCloseClick(object? sender, RoutedEventArgs e) => CloseFindBar();
+
+    /// <summary>Moves to the next (or previous) line containing the searched text and highlights the match.</summary>
+    private void FindNext(bool forward)
+    {
+        if (DataContext is not FileDiffViewModel vm)
+            return;
+
+        var text = FindTextBox.Text;
+        if (!FindBar.IsVisible || string.IsNullOrEmpty(text))
+        {
+            ShowFindBar();
+            return;
+        }
+
+        bool isLeft = FindSideComboBox.SelectedIndex != 1;
+        // Without a previous match, start at the first line in view.
+        int from = _findLineIndex >= 0 && _findLineIndex < vm.Lines.Count
+            ? _findLineIndex
+            : FirstVisibleLineIndex() - (forward ? 1 : 0);
+        var (lineIndex, position) = vm.Find(text, isLeft, from, forward, FindMatchCaseCheckBox.IsChecked == true);
+
+        ClearFindMatch();
+        if (lineIndex < 0)
+        {
+            FindStatus.Text = "Not found";
+            return;
+        }
+
+        FindStatus.Text = string.Empty;
+        _findLineIndex = lineIndex;
+        _findMatchLine = vm.Lines[lineIndex];
+        _findMatchLine.MatchLength = text.Length;
+        if (isLeft)
+            _findMatchLine.LeftMatchStart = position;
+        else
+            _findMatchLine.RightMatchStart = position;
+
+        RevealLine(lineIndex);
+    }
+
+    private void ClearFindMatch()
+    {
+        if (_findMatchLine == null)
+            return;
+        _findMatchLine.LeftMatchStart = -1;
+        _findMatchLine.RightMatchStart = -1;
+        _findMatchLine.MatchLength = 0;
+        _findMatchLine = null;
+    }
+
+    private int FirstVisibleLineIndex() =>
+        _leftScrollViewer == null ? 0 : (int)Math.Ceiling(_leftScrollViewer.Offset.Y / RowHeight);
+
+    /// <summary>Scrolls a line into view (a third from the top) unless it is visible already.</summary>
+    private void RevealLine(int lineIndex)
+    {
+        var viewer = _leftScrollViewer;
+        if (viewer == null)
+            return;
+
+        double top = lineIndex * RowHeight;
+        if (top >= viewer.Offset.Y && top + RowHeight <= viewer.Offset.Y + viewer.Viewport.Height)
+            return;
+        RequestScroll(Math.Max(0, top - viewer.Viewport.Height / 3));
+    }
+
+    // ── Go to line ─────────────────────────────────────────────────────────
+
+    /// <summary>Opens the Go to Line box for the pane that was used last.</summary>
+    public void ShowGoToLine() => GoToLineButton.Flyout?.ShowAt(GoToLineButton);
+
+    private void OnGoToLineFlyoutOpened(object? sender, EventArgs e)
+    {
+        GoToLeftRadio.IsChecked = _activeSideIsLeft;
+        GoToRightRadio.IsChecked = !_activeSideIsLeft;
+        GoToLineMessage.Text = string.Empty;
+        Dispatcher.UIThread.Post(() =>
+        {
+            GoToLineTextBox.Focus();
+            GoToLineTextBox.SelectAll();
+        });
+    }
+
+    private void OnGoToLineTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            GoToLine();
+            e.Handled = true;
+        }
+    }
+
+    private void OnGoToLineClick(object? sender, RoutedEventArgs e) => GoToLine();
+
+    private void GoToLine()
+    {
+        if (DataContext is not FileDiffViewModel vm)
+            return;
+
+        if (!int.TryParse(GoToLineTextBox.Text?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int lineNumber) || lineNumber < 1)
+        {
+            GoToLineMessage.Text = "Enter a line number.";
+            return;
+        }
+        if (!vm.GoToLine(lineNumber, isLeft: GoToRightRadio.IsChecked != true))
+        {
+            GoToLineMessage.Text = "There is no such line.";
+            return;
+        }
+        GoToLineButton.Flyout?.Hide();
     }
 
     private void OnLeftPathPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -319,6 +581,62 @@ public partial class FileDiffView : UserControl
             widest = Math.Max(widest, formatted.WidthIncludingTrailingWhitespace);
         }
         return Math.Ceiling(widest);
+    }
+
+    // ── Unified diff export ────────────────────────────────────────────────
+
+    private void OnCopyUnifiedDiffClick(object? sender, RoutedEventArgs e) => _ = CopyUnifiedDiffAsync();
+
+    private void OnSaveUnifiedDiffClick(object? sender, RoutedEventArgs e) => _ = SaveUnifiedDiffAsync();
+
+    /// <summary>Copies the differences as a unified diff to the clipboard.</summary>
+    public async Task CopyUnifiedDiffAsync()
+    {
+        var diff = await GetUnifiedDiffOrExplainAsync();
+        if (diff != null && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(diff);
+    }
+
+    /// <summary>Saves the differences as a unified diff (.diff/.patch) file.</summary>
+    public async Task SaveUnifiedDiffAsync()
+    {
+        var diff = await GetUnifiedDiffOrExplainAsync();
+        if (diff == null || TopLevel.GetTopLevel(this) is not { } topLevel || DataContext is not FileDiffViewModel vm)
+            return;
+
+        var name = Path.GetFileNameWithoutExtension(string.IsNullOrEmpty(vm.LeftFilePath) ? vm.RightFilePath : vm.LeftFilePath);
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Differences as Unified Diff",
+            SuggestedFileName = (string.IsNullOrEmpty(name) ? "differences" : name) + ".diff",
+            DefaultExtension = "diff",
+            FileTypeChoices = [new FilePickerFileType("Unified diff") { Patterns = ["*.diff", "*.patch"] }]
+        });
+        if (file == null)
+            return;
+
+        await using var stream = await file.OpenWriteAsync();
+        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        await writer.WriteAsync(diff);
+    }
+
+    /// <summary>The unified diff, or null after telling the user why there is none.</summary>
+    private async Task<string?> GetUnifiedDiffOrExplainAsync()
+    {
+        if (DataContext is not FileDiffViewModel vm)
+            return null;
+
+        var diff = vm.CreateUnifiedDiff();
+        if (diff.Length > 0)
+            return diff;
+
+        if (TopLevel.GetTopLevel(this) is Window owner)
+        {
+            await MessageDialog.ShowAsync(owner, "Export Differences", vm.IsBinary
+                ? "Binary files can't be exported as a unified diff."
+                : "There are no differences to export.");
+        }
+        return null;
     }
 
     // ── Clipboard ──────────────────────────────────────────────────────────

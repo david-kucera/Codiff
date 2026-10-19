@@ -19,6 +19,88 @@ public partial class FolderDiffViewModel : ObservableObject
 {
     private readonly FolderDiffService _folderService = new();
 
+    /// <summary>Result of the last comparison; the tree is rebuilt from it when the filters change.</summary>
+    private FolderDiffResult? _lastResult;
+
+    /// <summary>
+    /// Relative paths of the expanded folders. Kept apart from the nodes so that a folder hidden by
+    /// a filter is expanded again when it reappears.
+    /// </summary>
+    private readonly HashSet<string> _expandedFolderPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    public FolderDiffViewModel()
+    {
+        var config = ConfigService.Instance.Config;
+        _showIdenticalFiles = config.ShowIdenticalFiles;
+        _showDifferentFiles = config.ShowDifferentFiles;
+        _showLeftOnlyFiles = config.ShowLeftOnlyFiles;
+        _showRightOnlyFiles = config.ShowRightOnlyFiles;
+    }
+
+    // ── Filters: which files are listed (persisted) ───────────────────────
+
+    [ObservableProperty]
+    private bool _showIdenticalFiles;
+
+    [ObservableProperty]
+    private bool _showDifferentFiles;
+
+    [ObservableProperty]
+    private bool _showLeftOnlyFiles;
+
+    [ObservableProperty]
+    private bool _showRightOnlyFiles;
+
+    partial void OnShowIdenticalFilesChanged(bool value) => OnFilterChanged(config => config.ShowIdenticalFiles = value);
+
+    partial void OnShowDifferentFilesChanged(bool value) => OnFilterChanged(config => config.ShowDifferentFiles = value);
+
+    partial void OnShowLeftOnlyFilesChanged(bool value) => OnFilterChanged(config => config.ShowLeftOnlyFiles = value);
+
+    partial void OnShowRightOnlyFilesChanged(bool value) => OnFilterChanged(config => config.ShowRightOnlyFiles = value);
+
+    private void OnFilterChanged(Action<AppConfig> store)
+    {
+        store(ConfigService.Instance.Config);
+        ConfigService.Instance.Save();
+
+        if (_lastResult != null && !IsLoading)
+            RebuildTreeKeepingState(_lastResult);
+    }
+
+    /// <summary>Snapshot of the filters, usable from a background thread.</summary>
+    private Func<FileStatus, bool> CurrentFilter()
+    {
+        bool identical = ShowIdenticalFiles, different = ShowDifferentFiles;
+        bool leftOnly = ShowLeftOnlyFiles, rightOnly = ShowRightOnlyFiles;
+        return status => status switch
+        {
+            FileStatus.Identical => identical,
+            FileStatus.Modified => different,
+            FileStatus.OnlyInLeft => leftOnly,
+            FileStatus.OnlyInRight => rightOnly,
+            _ => true
+        };
+    }
+
+    /// <summary>Rebuilds the tree with the current filters, keeping expanded folders and the selection.</summary>
+    private void RebuildTreeKeepingState(FolderDiffResult result)
+    {
+        var selectedPath = SelectedNode?.RelativePath;
+
+        var roots = BuildTree(result, CurrentFilter());
+        foreach (var node in GetAllNodes(roots))
+        {
+            if (!node.IsFile && _expandedFolderPaths.Contains(node.RelativePath))
+                node.IsExpanded = true;
+        }
+        ShowTree(roots);
+
+        SelectedNode = selectedPath == null
+            ? null
+            : FlatRows.FirstOrDefault(n => string.Equals(n.RelativePath, selectedPath, StringComparison.OrdinalIgnoreCase));
+    }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RecompareCommand))]
     [NotifyCanExecuteChangedFor(nameof(SwapDirectoriesCommand))]
@@ -178,6 +260,8 @@ public partial class FolderDiffViewModel : ObservableObject
                 if (node.IsExpandable)
                     node.IsExpanded = false;
             }
+            // Also folders currently hidden by a filter.
+            _expandedFolderPaths.Clear();
         }
         finally
         {
@@ -486,11 +570,12 @@ public partial class FolderDiffViewModel : ObservableObject
             });
 
             // Everything up to the finished (but not yet displayed) tree runs off the UI thread.
+            var filter = CurrentFilter();
             (result, roots) = await Task.Run(() =>
             {
                 var diff = _folderService.DiffFolders(leftFolder, rightFolder, progress);
-                WarmUpIconCache(diff.Entries);
-                return (diff, BuildTree(diff));
+                WarmUpIconCache(diff.Entries, filter);
+                return (diff, BuildTree(diff, filter));
             });
         }
         finally
@@ -514,6 +599,8 @@ public partial class FolderDiffViewModel : ObservableObject
         ModifiedCount  = modified;
         IsStatsVisible = result.Entries.Count > 0;
 
+        _lastResult = result;
+        _expandedFolderPaths.Clear();
         ShowTree(roots);
     }
 
@@ -522,7 +609,7 @@ public partial class FolderDiffViewModel : ObservableObject
     /// extension), so that creating the tree nodes only hits the cache.
     /// Runs on a background thread.
     /// </summary>
-    private static void WarmUpIconCache(IReadOnlyList<FolderDiffEntry> entries)
+    private static void WarmUpIconCache(IReadOnlyList<FolderDiffEntry> entries, Func<FileStatus, bool> filter)
     {
         var iconService = IconExtractorServiceFactory.Instance;
         iconService.GetFolderIcon(string.Empty);
@@ -537,7 +624,7 @@ public partial class FolderDiffViewModel : ObservableObject
 
         foreach (var entry in entries)
         {
-            if (entry.Status == FileStatus.Identical)
+            if (!filter(entry.Status))
                 continue;
             WarmUp(entry.LeftFullPath);
             WarmUp(entry.RightFullPath);
@@ -545,10 +632,11 @@ public partial class FolderDiffViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Creates the tree of differing items and returns its root nodes. The nodes aren't connected to
-    /// anything yet, so this runs on a background thread; <see cref="ShowTree"/> then displays them.
+    /// Creates the tree of the files that pass <paramref name="filter"/> and returns its root nodes.
+    /// The nodes aren't connected to anything yet, so this can run on a background thread;
+    /// <see cref="ShowTree"/> then displays them.
     /// </summary>
-    private static List<FolderNodeViewModel> BuildTree(FolderDiffResult result)
+    private static List<FolderNodeViewModel> BuildTree(FolderDiffResult result, Func<FileStatus, bool> filter)
     {
         var roots = new List<FolderNodeViewModel>();
 
@@ -559,8 +647,8 @@ public partial class FolderDiffViewModel : ObservableObject
 
         foreach (var entry in result.Entries)
         {
-            // Only include differing items in the tree
-            if (entry.Status == FileStatus.Identical)
+            // Only list the kinds of files selected in the View menu (identical ones are hidden by default)
+            if (!filter(entry.Status))
                 continue;
 
             var parts = entry.RelativePath.Split(separators, StringSplitOptions.RemoveEmptyEntries);
@@ -621,11 +709,16 @@ public partial class FolderDiffViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(FolderNodeViewModel.IsExpanded) && !_isBatchUpdating &&
-            sender is FolderNodeViewModel node)
-        {
+        if (e.PropertyName != nameof(FolderNodeViewModel.IsExpanded) || sender is not FolderNodeViewModel node)
+            return;
+
+        if (node.IsExpanded)
+            _expandedFolderPaths.Add(node.RelativePath);
+        else
+            _expandedFolderPaths.Remove(node.RelativePath);
+
+        if (!_isBatchUpdating)
             UpdateFlatRowsForToggledNode(node);
-        }
     }
 
     private void RebuildFlatRows()

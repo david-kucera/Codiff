@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Codiff.Services;
 using Codiff.ViewModels;
 using Codiff.Views;
@@ -34,6 +35,10 @@ public partial class App : Application
             {
                 DataContext = vm
             };
+
+            // "Codiff <left> <right>" opens a comparison of two files or two folders right away.
+            if (desktop.Args is { Length: >= 2 } args)
+                Dispatcher.UIThread.Post(() => _ = vm.OpenComparisonAsync(args[0], args[1]), DispatcherPriority.Loaded);
         }
 
         base.OnFrameworkInitializationCompleted();

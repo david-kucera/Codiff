@@ -11,8 +11,12 @@ public class ConfigService
 {
     public static readonly ConfigService Instance = new();
 
+    // The CODIFF_CONFIG_DIR environment variable can point the settings somewhere else
+    // (a portable copy, or automated tests that must not touch the user's settings).
     private static readonly string ConfigDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Codiff");
+        Environment.GetEnvironmentVariable("CODIFF_CONFIG_DIR") is { Length: > 0 } configDir
+            ? configDir
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Codiff");
 
     private static readonly string ConfigPath = Path.Combine(ConfigDir, "config.json");
 
@@ -94,4 +98,17 @@ public class AppConfig
 {
     public bool IsDarkTheme { get; set; }
     public List<RecentComparison> RecentComparisons { get; set; } = [];
+
+    // ── File comparison options ──────────────────────────────────────────
+    public bool IgnoreWhiteSpace { get; set; } = true;
+    public bool IgnoreCase { get; set; }
+
+    /// <summary>Show the two files above each other instead of side by side.</summary>
+    public bool HorizontalSplit { get; set; }
+
+    // ── Which files the folder comparison lists ──────────────────────────
+    public bool ShowIdenticalFiles { get; set; }
+    public bool ShowDifferentFiles { get; set; } = true;
+    public bool ShowLeftOnlyFiles { get; set; } = true;
+    public bool ShowRightOnlyFiles { get; set; } = true;
 }

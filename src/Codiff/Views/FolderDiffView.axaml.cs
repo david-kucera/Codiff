@@ -308,32 +308,8 @@ public partial class FolderDiffView : UserControl
 
     private async void OnDeleteErrorOccurred(string message)
     {
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        if (owner == null) return;
-
-        var okBtn = new Button { Content = "OK", MinWidth = 80, HorizontalAlignment = HorizontalAlignment.Center };
-
-        var dialog = new Window
-        {
-            Title  = "Delete Error",
-            Width  = 420,
-            SizeToContent = SizeToContent.Height,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false,
-            Content = new StackPanel
-            {
-                Margin  = new Thickness(16),
-                Spacing = 16,
-                Children =
-                {
-                    new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 380 },
-                    okBtn
-                }
-            }
-        };
-
-        okBtn.Click += (_, _) => dialog.Close();
-        await dialog.ShowDialog(owner);
+        if (TopLevel.GetTopLevel(this) is Window owner)
+            await MessageDialog.ShowAsync(owner, "Delete Error", message);
     }
 
     // ── Confirm dialog ─────────────────────────────────────────────────────
@@ -427,9 +403,15 @@ public partial class FolderDiffView : UserControl
         {
             System.Diagnostics.Debug.WriteLine($"Failed to read '{leftPath}' / '{rightPath}'");
             System.Diagnostics.Debug.WriteLine(ex);
+            if (TopLevel.GetTopLevel(this) is Window parent)
+                _ = MessageDialog.ShowAsync(parent, "Codiff", $"Could not open the files:\n{ex.Message}");
             return;
         }
 
+        var fileView = new FileDiffView
+        {
+            DataContext = vm
+        };
         var window = new Window
         {
             Title = "Codiff - File Compare",
@@ -437,11 +419,10 @@ public partial class FolderDiffView : UserControl
             Height = 960,
             MinWidth = 800,
             MinHeight = 500,
-            Content = new FileDiffView
-            {
-                DataContext = vm
-            }
+            Content = fileView
         };
+        // Keyboard shortcuts (F8, F5, ...) work right away, without clicking into the view first.
+        window.Opened += (_, _) => fileView.Focus();
 
         if (TopLevel.GetTopLevel(this) is Window owner)
             window.Show(owner);

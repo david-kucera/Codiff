@@ -32,6 +32,9 @@ public partial class MainWindowViewModel : ObservableObject
     public Func<Task<(string? left, string? right)>>? OpenFoldersDialog;
     public Action? ExitApplication;
 
+    /// <summary>Set by the view to show an error message to the user.</summary>
+    public Func<string, Task>? ShowErrorAsync;
+
     public MainWindowViewModel()
     {
         FolderDiffViewModel.FileEntrySelected += OnFileEntrySelected;
@@ -60,11 +63,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (OpenFilesDialog == null) return;
         var (left, right) = await OpenFilesDialog();
         if (left != null && right != null)
-        {
-            FileDiffViewModel.LoadFiles(left, right);
-            IsFolderViewVisible = false;
-            AddRecentComparison(isFolder: false, left, right);
-        }
+            await OpenFilesAsync(left, right);
     }
 
     [RelayCommand]
@@ -73,12 +72,75 @@ public partial class MainWindowViewModel : ObservableObject
         if (OpenFoldersDialog == null) return;
         var (left, right) = await OpenFoldersDialog();
         if (left != null && right != null)
+            await OpenFoldersAsync(left, right);
+    }
+
+    /// <summary>
+    /// Compares two files or two folders, whichever the paths point to
+    /// (command-line arguments, drag and drop).
+    /// </summary>
+    public async Task OpenComparisonAsync(string leftPath, string rightPath)
+    {
+        leftPath = Path.GetFullPath(leftPath);
+        rightPath = Path.GetFullPath(rightPath);
+
+        if (Directory.Exists(leftPath) && Directory.Exists(rightPath))
+            await OpenFoldersAsync(leftPath, rightPath);
+        else if (File.Exists(leftPath) && File.Exists(rightPath))
+            await OpenFilesAsync(leftPath, rightPath);
+        else
+            await ShowError($"Cannot compare\n{leftPath}\nwith\n{rightPath}\n\nBoth must be existing files or both existing folders.");
+    }
+
+    /// <summary>Replaces one side of the shown comparison (a file or folder dropped onto that side).</summary>
+    public async Task ReplaceSideAsync(string path, bool isLeft)
+    {
+        string other = IsFolderViewVisible
+            ? (isLeft ? FolderDiffViewModel.RightFolderPath : FolderDiffViewModel.LeftFolderPath)
+            : (isLeft ? FileDiffViewModel.RightFilePath : FileDiffViewModel.LeftFilePath);
+        if (string.IsNullOrEmpty(other))
+            return;
+
+        await OpenComparisonAsync(isLeft ? path : other, isLeft ? other : path);
+    }
+
+    private async Task OpenFilesAsync(string left, string right)
+    {
+        try
         {
-            IsFolderViewVisible = true;
-            AddRecentComparison(isFolder: true, left, right);
+            FileDiffViewModel.LoadFiles(left, right);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            await ShowError($"Could not open the files:\n{ex.Message}");
+            return;
+        }
+        IsFolderViewVisible = false;
+        AddRecentComparison(isFolder: false, left, right);
+    }
+
+    private async Task OpenFoldersAsync(string left, string right)
+    {
+        var missing = new[] { left, right }.FirstOrDefault(path => !Directory.Exists(path));
+        if (missing != null)
+        {
+            await ShowError($"The folder does not exist:\n{missing}");
+            return;
+        }
+
+        IsFolderViewVisible = true;
+        AddRecentComparison(isFolder: true, left, right);
+        try
+        {
             await FolderDiffViewModel.LoadFoldersAsync(left, right);
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowError($"Could not compare the folders:\n{ex.Message}");
+        }
     }
+
+    private Task ShowError(string message) => ShowErrorAsync?.Invoke(message) ?? Task.CompletedTask;
 
     [RelayCommand]
     private void ClearRecent()
@@ -90,18 +152,10 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void OpenRecentComparison(RecentComparisonViewModel entry)
     {
-        if (entry.IsFolder)
-        {
-            IsFolderViewVisible = true;
-            _ = FolderDiffViewModel.LoadFoldersAsync(entry.LeftPath, entry.RightPath);
-        }
-        else
-        {
-            FileDiffViewModel.LoadFiles(entry.LeftPath, entry.RightPath);
-            IsFolderViewVisible = false;
-        }
-        // Promote to top of recent list
-        AddRecentComparison(entry.IsFolder, entry.LeftPath, entry.RightPath);
+        // Opening also promotes the entry to the top of the recent list.
+        _ = entry.IsFolder
+            ? OpenFoldersAsync(entry.LeftPath, entry.RightPath)
+            : OpenFilesAsync(entry.LeftPath, entry.RightPath);
     }
 
     private void AddRecentComparison(bool isFolder, string leftPath, string rightPath)

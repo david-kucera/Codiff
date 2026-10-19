@@ -30,6 +30,24 @@
                                Foreground="{DynamicResource LineNumberForeground}"
                                TextAlignment="Right" />
                 </Border>
+                <!-- Marks the lines of the current difference -->
+                <Rectangle Grid.Column="0"
+                           Width="3"
+                           HorizontalAlignment="Left"
+                           Fill="{DynamicResource CurrentDiffMarkerBrush}"
+                           IsVisible="{Binding IsInCurrentHunk}" />
+                <!-- Changed words and the search match, drawn behind the text -->
+                <controls:LineHighlighter Grid.Column="1"
+                                          Margin="0,1"
+                                          Text="{Binding LeftText}"
+                                          Spans="{Binding Model.LeftSpans}"
+                                          SpanBrush="{Binding LeftWordHighlightBrush}"
+                                          MatchStart="{Binding LeftMatchStart}"
+                                          MatchLength="{Binding MatchLength}"
+                                          MatchBrush="{DynamicResource SearchMatchBrush}"
+                                          FontFamily="Consolas,Courier New,monospace"
+                                          FontSize="13"
+                                          TextOffset="4" />
                 <!-- Content -->
                 <TextBox Grid.Column="1"
                          Margin="0,1"
@@ -61,6 +79,24 @@
                                Foreground="{DynamicResource LineNumberForeground}"
                                TextAlignment="Right" />
                 </Border>
+                <!-- Marks the lines of the current difference -->
+                <Rectangle Grid.Column="0"
+                           Width="3"
+                           HorizontalAlignment="Left"
+                           Fill="{DynamicResource CurrentDiffMarkerBrush}"
+                           IsVisible="{Binding IsInCurrentHunk}" />
+                <!-- Changed words and the search match, drawn behind the text -->
+                <controls:LineHighlighter Grid.Column="1"
+                                          Margin="0,1"
+                                          Text="{Binding RightText}"
+                                          Spans="{Binding Model.RightSpans}"
+                                          SpanBrush="{Binding RightWordHighlightBrush}"
+                                          MatchStart="{Binding RightMatchStart}"
+                                          MatchLength="{Binding MatchLength}"
+                                          MatchBrush="{DynamicResource SearchMatchBrush}"
+                                          FontFamily="Consolas,Courier New,monospace"
+                                          FontSize="13"
+                                          TextOffset="4" />
                 <!-- Content -->
                 <TextBox Grid.Column="1"
                          Margin="0,1"
@@ -76,6 +112,204 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="Button.tool, ToggleButton.tool">
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tool PathIcon, ToggleButton.tool PathIcon">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+        </Style>
+        <!-- Disabled tool buttons only dim their icon (the theme would also gray their background). -->
+        <Style Selector="Button.tool:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.tool:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.separator">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Margin" Value="4,4" />
+            <Setter Property="Background" Value="{DynamicResource ToolbarBorderBrush}" />
+        </Style>
+        <Style Selector="TextBlock.status">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource StatusBarForeground}" />
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Toolbar
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource ToolbarBackground}"
+                BorderBrush="{DynamicResource ToolbarBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="4,2">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+                <Button Classes="tool" Command="{Binding FirstDiffCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.FirstDifferenceTip}">
+                    <PathIcon Data="{StaticResource IconFirstDiff}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding PrevDiffCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.PreviousDifferenceTip}">
+                    <PathIcon Data="{StaticResource IconPreviousDiff}" />
+                </Button>
+                <TextBlock x:Name="DiffCounter"
+                           Text="{Binding DiffCounterText}"
+                           MinWidth="64"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+                <Button Classes="tool" Command="{Binding NextDiffCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.NextDifferenceTip}">
+                    <PathIcon Data="{StaticResource IconNextDiff}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding LastDiffCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.LastDifferenceTip}">
+                    <PathIcon Data="{StaticResource IconLastDiff}" />
+                </Button>
+
+                <Border Classes="separator" />
+
+                <Button Classes="tool" Command="{Binding RecompareCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.RecompareTip}">
+                    <PathIcon Data="{StaticResource IconRecompare}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding SwapCommand}"
+                        ToolTip.Tip="Swap Left and Right">
+                    <PathIcon Data="{StaticResource IconSwapDirectories}" />
+                </Button>
+
+                <Border Classes="separator" />
+
+                <Button Classes="tool" Command="{Binding CopyToRightCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.CopyToRightTip}">
+                    <PathIcon Data="{StaticResource IconCopyToRight}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding CopyToLeftCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.CopyToLeftTip}">
+                    <PathIcon Data="{StaticResource IconCopyToLeft}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding UndoCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.UndoTip}">
+                    <PathIcon Data="{StaticResource IconUndo}" />
+                </Button>
+                <Button Classes="tool" Command="{Binding SaveCommand}"
+                        ToolTip.Tip="{x:Static views:Shortcuts.SaveTip}">
+                    <PathIcon Data="{StaticResource IconSave}" />
+                </Button>
+                <Button x:Name="ExportButton" Classes="tool"
+                        ToolTip.Tip="Export Differences (unified diff)">
+                    <PathIcon Data="{StaticResource IconExportDiff}" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Copy as Unified Diff" Click="OnCopyUnifiedDiffClick" />
+                            <MenuItem Header="Save as Unified Diff..." Click="OnSaveUnifiedDiffClick" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Border Classes="separator" />
+
+                <Button Classes="tool" Click="OnFindButtonClick"
+                        ToolTip.Tip="{x:Static views:Shortcuts.FindTip}">
+                    <PathIcon Data="{StaticResource IconFind}" />
+                </Button>
+                <Button x:Name="GoToLineButton" Classes="tool"
+                        ToolTip.Tip="{x:Static views:Shortcuts.GoToLineTip}">
+                    <PathIcon Data="{StaticResource IconGoToLine}" />
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft" Opened="OnGoToLineFlyoutOpened">
+                            <StackPanel Spacing="8" Width="220">
+                                <TextBlock Text="Go to line:" />
+                                <TextBox x:Name="GoToLineTextBox"
+                                         Watermark="Line number"
+                                         KeyDown="OnGoToLineTextBoxKeyDown" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <RadioButton x:Name="GoToLeftRadio" Content="Left" GroupName="GoToLineSide" IsChecked="True" />
+                                    <RadioButton x:Name="GoToRightRadio" Content="Right" GroupName="GoToLineSide" />
+                                    <Button Content="Go" Click="OnGoToLineClick" />
+                                </StackPanel>
+                                <TextBlock x:Name="GoToLineMessage" FontSize="11" Foreground="{DynamicResource FileStatusForeground}" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Border Classes="separator" />
+
+                <ToggleButton Classes="tool" IsChecked="{Binding IgnoreWhiteSpace}"
+                              ToolTip.Tip="Ignore White Space">
+                    <PathIcon Data="{StaticResource IconIgnoreWhiteSpace}" />
+                </ToggleButton>
+                <ToggleButton Classes="tool" IsChecked="{Binding IgnoreCase}"
+                              ToolTip.Tip="Ignore Case">
+                    <PathIcon Data="{StaticResource IconIgnoreCase}" />
+                </ToggleButton>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Find bar (Ctrl+F)
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="FindBar"
+                DockPanel.Dock="Top"
+                IsVisible="False"
+                Background="{DynamicResource PanelHeaderBackground}"
+                BorderBrush="{DynamicResource SplitterBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="6,3">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBox x:Name="FindTextBox"
+                         Width="260"
+                         Watermark="Find"
+                         KeyDown="OnFindTextBoxKeyDown" />
+                <ComboBox x:Name="FindSideComboBox" SelectedIndex="0" VerticalAlignment="Center">
+                    <ComboBoxItem Content="in left file" />
+                    <ComboBoxItem Content="in right file" />
+                </ComboBox>
+                <CheckBox x:Name="FindMatchCaseCheckBox" Content="Match case" VerticalAlignment="Center" />
+                <Button Classes="tool" Click="OnFindPreviousClick" ToolTip.Tip="Previous Match">
+                    <PathIcon Data="{StaticResource IconPreviousDiff}" />
+                </Button>
+                <Button Classes="tool" Click="OnFindNextClick" ToolTip.Tip="Next Match">
+                    <PathIcon Data="{StaticResource IconNextDiff}" />
+                </Button>
+                <TextBlock x:Name="FindStatus" Classes="status" />
+                <Button Classes="tool" Click="OnFindCloseClick" ToolTip.Tip="Close (Esc)">
+                    <PathIcon Data="{StaticResource IconClose}" />
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Status bar
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{DynamicResource LegendBackground}"
+                BorderBrush="{DynamicResource LegendBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="8,3">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Classes="status" FontWeight="SemiBold"
+                           Text="{Binding StatusText}" />
+                <TextBlock Grid.Column="1" Classes="status" Margin="16,0,0,0"
+                           Text="{Binding LineStatsText}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16">
+                    <TextBlock Classes="status"
+                               Text="{Binding LeftFormatText, StringFormat='Left: {0}'}"
+                               IsVisible="{Binding LeftFormatText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Classes="status"
+                               Text="{Binding RightFormatText, StringFormat='Right: {0}'}"
+                               IsVisible="{Binding RightFormatText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
     <Panel>
 
@@ -290,5 +524,25 @@
             </Grid>
         </Grid>
 
+        <!-- Binary files are not compared line by line -->
+        <Border IsVisible="{Binding IsBinary}"
+                Background="{DynamicResource DataGridBackground}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                <TextBlock Text="{Binding BinaryMessage}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding LeftFilePath}"
+                           FontSize="11"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource FilePathForeground}" />
+                <TextBlock Text="{Binding RightFilePath}"
+                           FontSize="11"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource FilePathForeground}" />
+            </StackPanel>
+        </Border>
+
     </Panel>
+    </DockPanel>
 </UserControl>

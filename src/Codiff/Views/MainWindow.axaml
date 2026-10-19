@@ -8,7 +8,8 @@
         Width="1280"
         Height="960"
         MinWidth="800"
-        MinHeight="500">
+        MinHeight="500"
+        DragDrop.AllowDrop="True">
 
     <DockPanel>
         <!-- Menu bar -->
@@ -62,6 +63,127 @@
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
+            <MenuItem Header="Files">
+                <MenuItem Header="Compare Files..."
+                          Command="{Binding OpenFilesCommand}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconOpenFiles}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Recompare"
+                          Command="{Binding FileDiffViewModel.RecompareCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.Recompare}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconRecompare}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Swap Files"
+                          Command="{Binding FileDiffViewModel.SwapCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconSwapDirectories}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Save"
+                          Command="{Binding FileDiffViewModel.SaveCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.Save}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconSave}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="First Difference"
+                          Command="{Binding FileDiffViewModel.FirstDiffCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.FirstDifference}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconFirstDiff}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Previous Difference"
+                          Command="{Binding FileDiffViewModel.PrevDiffCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.PreviousDifference}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconPreviousDiff}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Next Difference"
+                          Command="{Binding FileDiffViewModel.NextDiffCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.NextDifference}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconNextDiff}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Last Difference"
+                          Command="{Binding FileDiffViewModel.LastDiffCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.LastDifference}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconLastDiff}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Copy Difference to Right"
+                          Command="{Binding FileDiffViewModel.CopyToRightCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.CopyToRight}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCopyToRight}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Copy Difference to Left"
+                          Command="{Binding FileDiffViewModel.CopyToLeftCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.CopyToLeft}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCopyToLeft}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Undo Copy"
+                          Command="{Binding FileDiffViewModel.UndoCommand}"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.Undo}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconUndo}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Find..."
+                          Click="OnFindMenuItemClick"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.Find}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconFind}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Go to Line..."
+                          Click="OnGoToLineMenuItemClick"
+                          IsEnabled="{Binding !IsFolderViewVisible}"
+                          InputGesture="{x:Static views:Shortcuts.GoToLine}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconGoToLine}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Copy Differences as Unified Diff"
+                          Click="OnCopyUnifiedDiffMenuItemClick"
+                          IsEnabled="{Binding !IsFolderViewVisible}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCopyToClipboard}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Save Differences as Unified Diff..."
+                          Click="OnSaveUnifiedDiffMenuItemClick"
+                          IsEnabled="{Binding !IsFolderViewVisible}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconExportDiff}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
             <MenuItem Header="Edit">
                 <MenuItem Header="Copy as Text"
                           Command="{Binding FileDiffViewModel.CopyAsTextCommand}">
@@ -109,6 +231,19 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
+                <MenuItem Header="Show Identical Files"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FolderDiffViewModel.ShowIdenticalFiles, Mode=TwoWay}" />
+                <MenuItem Header="Show Different Files"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FolderDiffViewModel.ShowDifferentFiles, Mode=TwoWay}" />
+                <MenuItem Header="Show Files Only in First Directory"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FolderDiffViewModel.ShowLeftOnlyFiles, Mode=TwoWay}" />
+                <MenuItem Header="Show Files Only in Second Directory"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FolderDiffViewModel.ShowRightOnlyFiles, Mode=TwoWay}" />
+                <Separator />
                 <MenuItem Header="Expand All"
                           Command="{Binding FolderDiffViewModel.ExpandAllCommand}">
                     <MenuItem.Icon>
@@ -136,6 +271,22 @@
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
+            <MenuItem Header="Options">
+                <MenuItem Header="Ignore White Space"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FileDiffViewModel.IgnoreWhiteSpace, Mode=TwoWay}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconIgnoreWhiteSpace}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Ignore Case"
+                          ToggleType="CheckBox"
+                          IsChecked="{Binding FileDiffViewModel.IgnoreCase, Mode=TwoWay}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconIgnoreCase}" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
         </Menu>
 
         <Border DockPanel.Dock="Top"
@@ -155,7 +306,7 @@
 
         <Grid>
             <Panel IsVisible="{Binding !IsFolderViewVisible}">
-                <views:FileDiffView DataContext="{Binding FileDiffViewModel}" />
+                <views:FileDiffView x:Name="FileView" DataContext="{Binding FileDiffViewModel}" />
             </Panel>
             <Panel IsVisible="{Binding IsFolderViewVisible}">
                 <views:FolderDiffView DataContext="{Binding FolderDiffViewModel}" />

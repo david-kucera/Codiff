@@ -31,10 +31,14 @@ public partial class DiffLineViewModel : ObservableObject
     private static readonly IBrush ChangedWordRightModifiedBrush = new SolidColorBrush(Color.Parse("#66CC66"));
     private static readonly IBrush ChangedWordAddedBrush = new SolidColorBrush(Color.Parse("#88EE88"));
     private static readonly IBrush ChangedWordDeletedBrush = new SolidColorBrush(Color.Parse("#FF9999"));
+    private static readonly IBrush ChangedWordLeftModifiedBrushDark = new SolidColorBrush(Color.Parse("#8A5A00"));
+    private static readonly IBrush ChangedWordRightModifiedBrushDark = new SolidColorBrush(Color.Parse("#2E6B2E"));
 
     // Reused for theme notifications, which are raised for every line at once.
     private static readonly PropertyChangedEventArgs LeftBackgroundChangedArgs = new(nameof(LeftBackground));
     private static readonly PropertyChangedEventArgs RightBackgroundChangedArgs = new(nameof(RightBackground));
+    private static readonly PropertyChangedEventArgs LeftWordHighlightChangedArgs = new(nameof(LeftWordHighlightBrush));
+    private static readonly PropertyChangedEventArgs RightWordHighlightChangedArgs = new(nameof(RightWordHighlightBrush));
 
     private static IBrush ModifiedBrush => ThemeService.Instance.IsDark ? ModifiedBrushDark : ModifiedBrushLight;
     private static IBrush OneSidedContentBrush => ThemeService.Instance.IsDark ? OneSidedContentBrushDark : OneSidedContentBrushLight;
@@ -56,6 +60,22 @@ public partial class DiffLineViewModel : ObservableObject
     private string _rightText;
 
     public LineType LineType => Model.LineType;
+
+    /// <summary>True for the lines of the difference that navigation and Copy to Right/Left act on.</summary>
+    [ObservableProperty]
+    private bool _isInCurrentHunk;
+
+    /// <summary>Start of the highlighted search match in the left text (-1 = none).</summary>
+    [ObservableProperty]
+    private int _leftMatchStart = -1;
+
+    /// <summary>Start of the highlighted search match in the right text (-1 = none).</summary>
+    [ObservableProperty]
+    private int _rightMatchStart = -1;
+
+    /// <summary>Length of the highlighted search match.</summary>
+    [ObservableProperty]
+    private int _matchLength;
 
     public event Action? LeftTextEdited;
     public event Action? RightTextEdited;
@@ -79,6 +99,16 @@ public partial class DiffLineViewModel : ObservableObject
         _ => NormalBrush
     };
 
+    /// <summary>Background of the changed words in the left text of a modified line.</summary>
+    public IBrush? LeftWordHighlightBrush => Model.LineType == LineType.Modified
+        ? (ThemeService.Instance.IsDark ? ChangedWordLeftModifiedBrushDark : ChangedWordLeftModifiedBrush)
+        : null;
+
+    /// <summary>Background of the changed words in the right text of a modified line.</summary>
+    public IBrush? RightWordHighlightBrush => Model.LineType == LineType.Modified
+        ? (ThemeService.Instance.IsDark ? ChangedWordRightModifiedBrushDark : ChangedWordRightModifiedBrush)
+        : null;
+
     /// <summary>Word-level pieces of the left text (created on first use).</summary>
     public IReadOnlyList<SpanViewModel> LeftSpanViewModels =>
         _leftSpanViewModels ??= BuildSpanViewModels(Model.LeftSpans, Model.LineType, isLeft: true);
@@ -101,6 +131,11 @@ public partial class DiffLineViewModel : ObservableObject
     {
         OnPropertyChanged(LeftBackgroundChangedArgs);
         OnPropertyChanged(RightBackgroundChangedArgs);
+        if (Model.LineType == LineType.Modified)
+        {
+            OnPropertyChanged(LeftWordHighlightChangedArgs);
+            OnPropertyChanged(RightWordHighlightChangedArgs);
+        }
     }
 
     private static IReadOnlyList<SpanViewModel> BuildSpanViewModels(IReadOnlyList<DiffSpan> spans, LineType lineType, bool isLeft)

@@ -1,7 +1,5 @@
-using System.Buffers;
 using System.IO.Enumeration;
 using Codiff.Models;
-using Microsoft.Win32.SafeHandles;
 
 namespace Codiff.Services;
 
@@ -20,8 +18,6 @@ public readonly record struct FolderDiffProgress(string Phase, int Done, int Tot
 public class FolderDiffService
 {
     #region Class members
-    private const int CompareBufferSize = 64 * 1024;
-
     // File contents are compared on a few threads at once: it hides I/O latency (SSDs, network
     // shares) without flooding a single spinning disk with concurrent reads.
     private const int MaxParallelComparisons = 4;
@@ -147,66 +143,7 @@ public class FolderDiffService
         return result;
     }
 
-    private static bool AreFilesIdentical(ScannedFile left, ScannedFile right)
-    {
-        if (left.Length != right.Length)
-            return false;
-
-        byte[]? buffer1 = null;
-        byte[]? buffer2 = null;
-        try
-        {
-            // FileShare.ReadWrite | Delete: files that another program keeps open for writing
-            // (logs, databases) can still be compared.
-            using var leftHandle = OpenForCompare(left.FullPath);
-            using var rightHandle = OpenForCompare(right.FullPath);
-
-            buffer1 = ArrayPool<byte>.Shared.Rent(CompareBufferSize);
-            buffer2 = ArrayPool<byte>.Shared.Rent(CompareBufferSize);
-
-            long offset = 0;
-            while (true)
-            {
-                int read1 = ReadBlock(leftHandle, buffer1, offset);
-                int read2 = ReadBlock(rightHandle, buffer2, offset);
-
-                if (read1 != read2) return false;
-                if (read1 == 0) return true;
-                if (!buffer1.AsSpan(0, read1).SequenceEqual(buffer2.AsSpan(0, read2)))
-                    return false;
-
-                offset += read1;
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
-        {
-            // A file that cannot be read cannot be confirmed identical; show it as modified
-            // instead of failing the whole folder comparison.
-            System.Diagnostics.Debug.WriteLine($"[FolderDiffService] Compare failed for '{left.FullPath}': {ex.Message}");
-            return false;
-        }
-        finally
-        {
-            if (buffer1 != null) ArrayPool<byte>.Shared.Return(buffer1);
-            if (buffer2 != null) ArrayPool<byte>.Shared.Return(buffer2);
-        }
-    }
-
-    private static SafeFileHandle OpenForCompare(string path) =>
-        File.OpenHandle(path, FileMode.Open, FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete, FileOptions.SequentialScan);
-
-    /// <summary>Reads until the block is full or the end of the file is reached (a single read may return less).</summary>
-    private static int ReadBlock(SafeFileHandle handle, byte[] buffer, long offset)
-    {
-        int total = 0;
-        while (total < CompareBufferSize)
-        {
-            int read = RandomAccess.Read(handle, buffer.AsSpan(total, CompareBufferSize - total), offset + total);
-            if (read == 0) break;
-            total += read;
-        }
-        return total;
-    }
+    private static bool AreFilesIdentical(ScannedFile left, ScannedFile right) =>
+        FileContentComparer.AreIdentical(left.FullPath, right.FullPath, left.Length, right.Length);
     #endregion // Private functions
 }
